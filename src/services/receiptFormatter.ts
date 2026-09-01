@@ -18,9 +18,93 @@ export interface FormattedReceiptData {
   currencySymbol?: string;
   cashierName?: string;
   tableName?: string;
+  receiptLanguage?: 'en' | 'ku' | 'ar';
 }
 
 export class ReceiptFormatter {
+  private static getLabels(lang: 'en' | 'ku' | 'ar' = 'en') {
+    const dict = {
+      en: {
+        orderNo: 'Order #:',
+        date: 'Date:   ',
+        table: 'Table:  ',
+        type: 'Type:   ',
+        pay: 'Pay: ',
+        item: 'ITEM',
+        qty: 'QTY',
+        price: 'PRICE',
+        subtotal: 'Subtotal:',
+        discount: 'Discount:',
+        service: 'Service:',
+        total: 'TOTAL DUE:',
+        thanks: 'Thank you for your visit!',
+        dineIn: 'DINE-IN',
+        takeaway: 'TAKEAWAY',
+        delivery: 'DELIVERY',
+        cash: 'CASH',
+        card: 'CARD',
+      },
+      ku: {
+        orderNo: 'ژ. پسوولە:',
+        date: 'بەروار:   ',
+        table: 'مێز:     ',
+        type: 'جۆر:     ',
+        pay: 'پارەدان: ',
+        item: 'بابەت',
+        qty: 'دانە',
+        price: 'نرخ',
+        subtotal: 'کۆی گشتی:',
+        discount: 'داشکاندن:',
+        service: 'خزمەتگوزاری:',
+        total: 'کۆی کۆتایی:',
+        thanks: 'سەردانەکەت جێگەی دڵخۆشیمانە',
+        dineIn: 'هۆڵ',
+        takeaway: 'سەفەری',
+        delivery: 'گەیاندن',
+        cash: 'کاش',
+        card: 'کارت',
+      },
+      ar: {
+        orderNo: 'رقم الطلب:',
+        date: 'التاريخ:  ',
+        table: 'الطاولة:  ',
+        type: 'النوع:    ',
+        pay: 'الدفع: ',
+        item: 'الصنف',
+        qty: 'الكمية',
+        price: 'السعر',
+        subtotal: 'المجموع:',
+        discount: 'الخصم:',
+        service: 'الخدمة:',
+        total: 'الإجمالي الكلي:',
+        thanks: 'شكراً لزيارتكم',
+        dineIn: 'صالة',
+        takeaway: 'سفري',
+        delivery: 'توصيل',
+        cash: 'نقدي',
+        card: 'بطاقة',
+      },
+    };
+
+    return dict[lang] || dict.en;
+  }
+
+  private static getItemName(item: any, menuItem: MenuItem | undefined, lang: 'en' | 'ku' | 'ar') {
+    let name = 'Item';
+    if (menuItem) {
+      if (lang === 'ku' && menuItem.nameKu) name = menuItem.nameKu;
+      else if (lang === 'ar' && menuItem.nameAr) name = menuItem.nameAr;
+      else name = menuItem.nameEn || menuItem.nameKu || menuItem.nameAr || 'Item';
+    }
+    return name + (item.variantName ? ` (${item.variantName})` : '');
+  }
+
+  private static getAddonName(addon: any, lang: 'en' | 'ku' | 'ar') {
+    if (lang === 'ku' && addon.nameKu) return addon.nameKu;
+    if (lang === 'ar' && addon.nameAr) return addon.nameAr;
+    return addon.nameEn || addon.nameKu || addon.nameAr || 'Addon';
+  }
+
   /**
    * Builds standard Epson ePOS-Print XML payload for direct HTTP POST (Epson TM-T88VI, TM-m30, TM-T20, etc.)
    */
@@ -29,15 +113,17 @@ export class ReceiptFormatter {
     paperWidth: '80mm' | '58mm' = '80mm',
     options?: { autoCut?: boolean; openCashDrawer?: boolean }
   ): string {
+    const lang = data.receiptLanguage || 'en';
+    const labels = this.getLabels(lang);
     const charsPerLine = paperWidth === '80mm' ? 42 : 32;
     const divider = '-'.repeat(charsPerLine);
-    const dateStr = new Date(data.order.createdAt).toLocaleString();
+    const dateStr = new Date(data.order.createdAt).toLocaleString(lang === 'ar' ? 'ar-IQ' : lang === 'ku' ? 'ku-IQ' : 'en-US');
     const curr = data.currencySymbol || 'IQD';
 
     let itemsXml = '';
     data.order.items.forEach((item) => {
       const menuItem = data.menuItems.find((m) => m.id === item.menuItemId);
-      const name = (menuItem?.nameEn || menuItem?.nameKu || menuItem?.nameAr || 'Item') + (item.variantName ? ` (${item.variantName})` : '');
+      const name = this.getItemName(item, menuItem, lang);
       const priceStr = `${(item.price * item.quantity).toLocaleString()} ${curr}`;
       const qtyPrefix = `${item.quantity}x `;
 
@@ -49,7 +135,7 @@ export class ReceiptFormatter {
 
       if (item.selectedAddons && item.selectedAddons.length > 0) {
         item.selectedAddons.forEach((addon) => {
-          const addonName = addon.nameEn || addon.nameKu || addon.nameAr || 'Addon';
+          const addonName = this.getAddonName(addon, lang);
           const addonPriceStr = addon.price > 0 ? ` (+${addon.price.toLocaleString()} ${curr})` : '';
           itemsXml += `      <text>  + ${this.escapeXml(addonName + addonPriceStr)}&#10;</text>\n`;
         });
@@ -64,11 +150,14 @@ export class ReceiptFormatter {
       return label.padEnd(available).slice(0, available) + value;
     };
 
-    const subtotalLine = formatRow('Subtotal:', `${data.order.subtotal.toLocaleString()} ${curr}`);
-    const totalLine = formatRow('TOTAL:', `${data.order.total.toLocaleString()} ${curr}`);
+    const subtotalLine = formatRow(labels.subtotal, `${data.order.subtotal.toLocaleString()} ${curr}`);
+    const totalLine = formatRow(labels.total, `${data.order.total.toLocaleString()} ${curr}`);
 
     const autoCutXml = options?.autoCut !== false ? `<feed line="3"/><cut type="feed"/>` : `<feed line="3"/>`;
     const pulseXml = options?.openCashDrawer ? `<pulse drawer="drawer_1" time="pulse_100"/>` : '';
+
+    const orderTypeLabel = data.order.type === 'dine_in' ? labels.dineIn : data.order.type === 'takeaway' ? labels.takeaway : labels.delivery;
+    const paymentLabel = data.order.paymentMethod === 'card' ? labels.card : labels.cash;
 
     return `<?xml version="1.0" encoding="utf-8"?>
 <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
@@ -80,19 +169,19 @@ export class ReceiptFormatter {
       ${data.phone ? `<text align="center">Tel: ${this.escapeXml(data.phone)}&#10;</text>` : ''}
       ${data.headerText ? `<text align="center">${this.escapeXml(data.headerText)}&#10;</text>` : ''}
       <text align="center">${divider}&#10;</text>
-      <text align="left">Order #: ${this.escapeXml(data.order.invoiceCode || data.order.id)}&#10;</text>
-      <text align="left">Date: ${this.escapeXml(dateStr)}&#10;</text>
-      ${data.order.tableId || data.tableName ? `<text align="left" width="1" height="2" em="true">TABLE: ${this.escapeXml(data.tableName || data.order.tableId || '')}&#10;</text>` : ''}
-      <text align="left">Type: ${this.escapeXml(data.order.type?.toUpperCase() || 'DINE-IN')} | Pay: ${this.escapeXml(data.order.paymentMethod?.toUpperCase() || 'CASH')}&#10;</text>
+      <text align="left">${labels.orderNo} ${this.escapeXml(data.order.invoiceCode || data.order.id)}&#10;</text>
+      <text align="left">${labels.date} ${this.escapeXml(dateStr)}&#10;</text>
+      ${data.order.tableId || data.tableName ? `<text align="left" width="1" height="2" em="true">${labels.table} ${this.escapeXml(data.tableName || data.order.tableId || '')}&#10;</text>` : ''}
+      <text align="left">${labels.type} ${this.escapeXml(orderTypeLabel)} | ${labels.pay} ${this.escapeXml(paymentLabel)}&#10;</text>
       <text align="center">${divider}&#10;</text>
       <text align="left">&#10;</text>
 ${itemsXml}      <text align="center">${divider}&#10;</text>
       <text align="left">${this.escapeXml(subtotalLine)}&#10;</text>
-      ${data.order.discount ? `<text align="left">${this.escapeXml(formatRow('Discount:', `-${data.order.discount.toLocaleString()} ${curr}`))}&#10;</text>` : ''}
-      ${data.order.serviceCharge ? `<text align="left">${this.escapeXml(formatRow('Service:', `+${data.order.serviceCharge.toLocaleString()} ${curr}`))}&#10;</text>` : ''}
+      ${data.order.discount ? `<text align="left">${this.escapeXml(formatRow(labels.discount, `-${data.order.discount.toLocaleString()} ${curr}`))}&#10;</text>` : ''}
+      ${data.order.serviceCharge ? `<text align="left">${this.escapeXml(formatRow(labels.service, `+${data.order.serviceCharge.toLocaleString()} ${curr}`))}&#10;</text>` : ''}
       <text align="left" width="1" height="2" em="true">${this.escapeXml(totalLine)}&#10;</text>
       <text align="center">${divider}&#10;</text>
-      <text align="center">${this.escapeXml(data.footerText || 'Thank you for your visit!')}&#10;</text>
+      <text align="center">${this.escapeXml(data.footerText || labels.thanks)}&#10;</text>
       ${autoCutXml}
     </epos-print>
   </s:Body>
@@ -107,6 +196,8 @@ ${itemsXml}      <text align="center">${divider}&#10;</text>
     paperWidth: '80mm' | '58mm' = '80mm',
     options?: { autoCut?: boolean }
   ): string {
+    const lang = data.receiptLanguage || 'en';
+    const labels = this.getLabels(lang);
     const charsPerLine = paperWidth === '80mm' ? 42 : 32;
     const divider = '-'.repeat(charsPerLine);
     const dateStr = new Date(data.order.createdAt).toLocaleString();
@@ -115,7 +206,7 @@ ${itemsXml}      <text align="center">${divider}&#10;</text>
     let itemsBody = '';
     data.order.items.forEach((item) => {
       const menuItem = data.menuItems.find((m) => m.id === item.menuItemId);
-      const name = (menuItem?.nameEn || menuItem?.nameKu || menuItem?.nameAr || 'Item') + (item.variantName ? ` (${item.variantName})` : '');
+      const name = this.getItemName(item, menuItem, lang);
       const priceStr = `${(item.price * item.quantity).toLocaleString()} ${curr}`;
       const qtyPrefix = `${item.quantity}x `;
       const availableWidth = Math.max(10, charsPerLine - priceStr.length);
@@ -128,14 +219,14 @@ ${itemsXml}      <text align="center">${divider}&#10;</text>
       ${data.address ? `<text alignment="center">${this.escapeXml(data.address)}\n</text>` : ''}
       ${data.phone ? `<text alignment="center">Tel: ${this.escapeXml(data.phone)}\n</text>` : ''}
       <text alignment="center">${divider}\n</text>
-      <text alignment="left">Order #: ${this.escapeXml(data.order.invoiceCode || data.order.id)}\n</text>
-      <text alignment="left">Date: ${this.escapeXml(dateStr)}\n</text>
+      <text alignment="left">${labels.orderNo} ${this.escapeXml(data.order.invoiceCode || data.order.id)}\n</text>
+      <text alignment="left">${labels.date} ${this.escapeXml(dateStr)}\n</text>
       <text alignment="center">${divider}\n</text>
       ${itemsBody}
       <text alignment="center">${divider}\n</text>
-      <text alignment="left" width="1" height="2" bold="true">TOTAL: ${data.order.total.toLocaleString()} ${curr}\n</text>
+      <text alignment="left" width="1" height="2" bold="true">${labels.total} ${data.order.total.toLocaleString()} ${curr}\n</text>
       <text alignment="center">${divider}\n</text>
-      <text alignment="center">${this.escapeXml(data.footerText || 'Thank you for your visit!')}\n</text>
+      <text alignment="center">${this.escapeXml(data.footerText || labels.thanks)}\n</text>
       ${options?.autoCut !== false ? `<cut-paper type="partial"/>` : ''}
     </StarWebPRNT>`;
   }
@@ -144,6 +235,8 @@ ${itemsXml}      <text align="center">${divider}&#10;</text>
    * Builds clean plain text / ESC/POS string formatted for bridge socket printing
    */
   public static buildPlainText(data: FormattedReceiptData, charsPerLine = 40): string {
+    const lang = data.receiptLanguage || 'en';
+    const labels = this.getLabels(lang);
     const divider = '-'.repeat(charsPerLine);
     const doubleDivider = '='.repeat(charsPerLine);
     const curr = data.currencySymbol || 'IQD';
@@ -156,22 +249,24 @@ ${itemsXml}      <text align="center">${divider}&#10;</text>
     text += `${doubleDivider}\n`;
 
     // Order meta
-    text += `Order #: ${data.order.invoiceCode || data.order.id}\n`;
-    text += `Date:    ${new Date(data.order.createdAt).toLocaleString()}\n`;
+    text += `${labels.orderNo} ${data.order.invoiceCode || data.order.id}\n`;
+    text += `${labels.date} ${new Date(data.order.createdAt).toLocaleString()}\n`;
     if (data.order.tableId || data.tableName) {
-      text += `Table:   ${data.tableName || data.order.tableId}\n`;
+      text += `${labels.table} ${data.tableName || data.order.tableId}\n`;
     }
-    text += `Type:    ${data.order.type?.toUpperCase() || 'DINE-IN'} | Pay: ${data.order.paymentMethod?.toUpperCase() || 'CASH'}\n`;
+    const orderTypeStr = data.order.type === 'dine_in' ? labels.dineIn : data.order.type === 'takeaway' ? labels.takeaway : labels.delivery;
+    const paymentStr = data.order.paymentMethod === 'card' ? labels.card : labels.cash;
+    text += `${labels.type} ${orderTypeStr} | ${labels.pay} ${paymentStr}\n`;
     text += `${divider}\n`;
 
     // Header
     const colItemWidth = charsPerLine - 14;
-    text += `ITEM`.padEnd(colItemWidth) + `QTY`.padStart(4) + `PRICE`.padStart(10) + '\n';
+    text += labels.item.padEnd(colItemWidth) + labels.qty.padStart(4) + labels.price.padStart(10) + '\n';
     text += `${divider}\n`;
 
     data.order.items.forEach((item) => {
       const menuItem = data.menuItems.find((m) => m.id === item.menuItemId);
-      const name = (menuItem?.nameEn || menuItem?.nameKu || menuItem?.nameAr || 'Item') + (item.variantName ? ` (${item.variantName})` : '');
+      const name = this.getItemName(item, menuItem, lang);
       const priceStr = `${(item.price * item.quantity).toLocaleString()}`;
       const qtyStr = `${item.quantity}`;
 
@@ -180,7 +275,7 @@ ${itemsXml}      <text align="center">${divider}&#10;</text>
 
       if (item.selectedAddons && item.selectedAddons.length > 0) {
         item.selectedAddons.forEach((addon) => {
-          const addonName = addon.nameEn || addon.nameKu || addon.nameAr || 'Addon';
+          const addonName = this.getAddonName(addon, lang);
           const addonPriceStr = addon.price > 0 ? ` (+${addon.price.toLocaleString()} ${curr})` : '';
           text += `  + ${addonName}${addonPriceStr}\n`;
         });
@@ -191,23 +286,25 @@ ${itemsXml}      <text align="center">${divider}&#10;</text>
     });
 
     text += `${divider}\n`;
-    text += `Subtotal:`.padEnd(charsPerLine - `${data.order.subtotal.toLocaleString()} ${curr}`.length) + `${data.order.subtotal.toLocaleString()} ${curr}\n`;
+    text += `${labels.subtotal}`.padEnd(charsPerLine - `${data.order.subtotal.toLocaleString()} ${curr}`.length) + `${data.order.subtotal.toLocaleString()} ${curr}\n`;
     if (data.order.discount) {
-      text += `Discount:`.padEnd(charsPerLine - `-${data.order.discount.toLocaleString()} ${curr}`.length) + `-${data.order.discount.toLocaleString()} ${curr}\n`;
+      text += `${labels.discount}`.padEnd(charsPerLine - `-${data.order.discount.toLocaleString()} ${curr}`.length) + `-${data.order.discount.toLocaleString()} ${curr}\n`;
     }
     if (data.order.serviceCharge) {
-      text += `Service:`.padEnd(charsPerLine - `+${data.order.serviceCharge.toLocaleString()} ${curr}`.length) + `+${data.order.serviceCharge.toLocaleString()} ${curr}\n`;
+      text += `${labels.service}`.padEnd(charsPerLine - `+${data.order.serviceCharge.toLocaleString()} ${curr}`.length) + `+${data.order.serviceCharge.toLocaleString()} ${curr}\n`;
     }
 
     // Total Box
     text += `${doubleDivider}\n`;
-    text += `TOTAL DUE:`.padEnd(charsPerLine - `${data.order.total.toLocaleString()} ${curr}`.length) + `${data.order.total.toLocaleString()} ${curr}\n`;
+    text += `${labels.total}`.padEnd(charsPerLine - `${data.order.total.toLocaleString()} ${curr}`.length) + `${data.order.total.toLocaleString()} ${curr}\n`;
     text += `${doubleDivider}\n`;
 
     // Footer
     if (data.footerText) {
       const cleanFooter = data.footerText.replace(/^[!؟?\s]+|[!؟?\s]+$/g, '');
       text += `${this.centerText(cleanFooter, charsPerLine)}\n`;
+    } else {
+      text += `${this.centerText(labels.thanks, charsPerLine)}\n`;
     }
     text += `${this.centerText('* * * * *', charsPerLine)}\n`;
     text += `${this.centerText('POWERED BY MAS POS', charsPerLine)}\n\n\n\n`;
@@ -234,3 +331,4 @@ ${itemsXml}      <text align="center">${divider}&#10;</text>
     });
   }
 }
+

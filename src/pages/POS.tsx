@@ -258,6 +258,7 @@ export const POS: React.FC = () => {
         menuItems,
         currencySymbol: receiptSettings.currency || 'IQD',
         tableName,
+        receiptLanguage: (receiptSettings.receiptLanguage || language || 'en') as 'en' | 'ku' | 'ar',
       });
 
       showToast(
