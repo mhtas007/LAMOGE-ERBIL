@@ -319,12 +319,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
 
   const [receiptSettings, setReceiptSettings] = useState<ReceiptSettings>({
-    cafeName: 'MAS POS',
-    address: '123 Coffee Street, City Center',
-    phone: '+964 750 123 4567',
+    cafeName: 'LAMOGE CAFE',
+    address: 'Erbil Avenue',
+    phone: '',
     taxRate: 0,
     currency: 'IQD',
-    logo: null,
+    logo: '/lamoge_logo.png',
     footerText: 'Thank you for your visit!',
     receiptLanguage: 'en',
     telegramToken: '',
