@@ -151,5 +151,18 @@
     border: none !important;
     margin: 0 auto !important;
   }
+
+  .receipt-paper img {
+    image-rendering: -webkit-optimize-contrast !important;
+    image-rendering: crisp-edges !important;
+    filter: grayscale(100%) contrast(140%) !important;
+    display: block !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    max-width: 90px !important;
+    max-height: 70px !important;
+    object-fit: contain !important;
+  }
 }
+
 

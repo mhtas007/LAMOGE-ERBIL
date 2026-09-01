@@ -105,13 +105,19 @@ export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride }) => 
     >
       {/* Brand Header */}
       <div className="text-center mb-4">
-        {receiptSettings.logo && (
-          <img
-            src={receiptSettings.logo}
-            alt="Logo"
-            className="w-16 h-16 mx-auto mb-2 object-contain grayscale"
-          />
-        )}
+        {receiptSettings.logo ? (
+          <div className="flex justify-center items-center mb-2.5">
+            <img
+              src={receiptSettings.logo}
+              alt="Logo"
+              className="max-h-20 max-w-[130px] object-contain mx-auto grayscale"
+              style={{
+                filter: 'grayscale(100%) contrast(140%)',
+                imageRendering: 'crisp-edges',
+              }}
+            />
+          </div>
+        ) : null}
         <h1 className="text-lg sm:text-xl font-black tracking-wider uppercase text-black">
           {receiptSettings.cafeName || 'MAS CAFE'}
         </h1>
