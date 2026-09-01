@@ -33,11 +33,9 @@ export class ReceiptImageRenderer {
         item: 'Item',
         qty: 'Qty',
         price: 'Price',
-        subtotal: 'Subtotal:',
         discount: 'Discount:',
         serviceCharge: 'Service:',
         total: 'TOTAL:',
-        payment: 'Payment - Cash',
         productsCount: 'Products Count',
         dineIn: 'Dine In',
         takeaway: 'Takeaway',
@@ -53,17 +51,15 @@ export class ReceiptImageRenderer {
         item: 'بابەت',
         qty: 'دانە',
         price: 'نرخ',
-        subtotal: 'کۆی گشتی:',
         discount: 'داشکاندن:',
         serviceCharge: 'خزمەتگوزاری:',
         total: 'کۆی کۆتایی:',
-        payment: 'شێوازی پارەدان - نەختینە',
         productsCount: 'ژمارەی بابەتەکان',
         dineIn: 'Dine In',
         takeaway: 'Takeaway',
         delivery: 'Delivery',
         thanks: 'سەردانەکەت جێگەی دڵخۆشیمانە',
-        pleasure: 'چێژی تایبەتی تامی خۆش',
+        pleasure: 'چێژی تایەتی تامی خۆش',
       },
       ar: {
         printedAt: 'وقت الطباعة:',
@@ -73,11 +69,9 @@ export class ReceiptImageRenderer {
         item: 'الصنف',
         qty: 'الكمية',
         price: 'السعر',
-        subtotal: 'المجموع الفرعي:',
         discount: 'الخصم:',
         serviceCharge: 'رسوم الخدمة:',
         total: 'الإجمالي:',
-        payment: 'طريقة الدفع - نقدي',
         productsCount: 'عدد الأصناف',
         dineIn: 'Dine In',
         takeaway: 'Takeaway',
@@ -93,11 +87,9 @@ export class ReceiptImageRenderer {
       item: 'Item',
       qty: 'Qty',
       price: 'Price',
-      subtotal: 'Subtotal:',
       discount: 'Discount:',
       serviceCharge: 'Service:',
       total: 'TOTAL:',
-      payment: 'Payment - Cash',
       productsCount: 'Products Count',
       dineIn: 'Dine In',
       takeaway: 'Takeaway',
@@ -107,13 +99,13 @@ export class ReceiptImageRenderer {
     };
 
     // 1. Calculate dynamic height
-    let estimatedHeight = is58mm ? 400 : 480;
+    let estimatedHeight = is58mm ? 420 : 520;
     estimatedHeight += is58mm ? 120 : 160;
-    if (data.address) estimatedHeight += 32;
+    if (data.address) estimatedHeight += 36;
     data.order.items.forEach((it) => {
-      estimatedHeight += is58mm ? 36 : 44;
+      estimatedHeight += is58mm ? 36 : 46;
       if (it.selectedAddons && it.selectedAddons.length > 0) {
-        estimatedHeight += it.selectedAddons.length * (is58mm ? 26 : 30);
+        estimatedHeight += it.selectedAddons.length * (is58mm ? 28 : 34);
       }
       if (it.notes) estimatedHeight += 28;
     });
@@ -150,8 +142,8 @@ export class ReceiptImageRenderer {
         });
 
         if (logoImg.width && logoImg.height) {
-          const maxLogoW = is58mm ? 220 : 300;
-          const maxLogoH = is58mm ? 90 : 120;
+          const maxLogoW = is58mm ? 220 : 320;
+          const maxLogoH = is58mm ? 90 : 130;
           let drawW = maxLogoW;
           let drawH = (logoImg.height / logoImg.width) * drawW;
           if (drawH > maxLogoH) {
@@ -160,34 +152,34 @@ export class ReceiptImageRenderer {
           }
 
           ctx.drawImage(logoImg, centerX - drawW / 2, y, drawW, drawH);
-          y += drawH + (is58mm ? 10 : 14);
+          y += drawH + (is58mm ? 12 : 16);
         }
       } catch (err) {
         console.warn('[ReceiptImageRenderer] Logo render error:', err);
       }
     }
 
-    // --- 2. CAFE INFO ---
+    // --- 2. CAFE NAME (Requested size: 30px) ---
     ctx.direction = isRtl ? 'rtl' : 'ltr';
     ctx.textAlign = 'center';
 
-    ctx.font = `bold ${is58mm ? '21px' : '26px'} ${fontPrimary}`;
+    ctx.font = `bold ${is58mm ? '24px' : '30px'} ${fontPrimary}`;
     ctx.fillText((data.cafeName || 'LAMOGE CAFE').toUpperCase(), centerX, y);
-    y += is58mm ? 26 : 32;
+    y += is58mm ? 30 : 38;
 
-    ctx.font = `500 ${is58mm ? '14px' : '17px'} ${fontPrimary}`;
+    ctx.font = `500 ${is58mm ? '15px' : '18px'} ${fontPrimary}`;
     ctx.fillText(data.headerText || `Welcome to ${data.cafeName || 'Lamoge'}`, centerX, y);
-    y += is58mm ? 20 : 24;
+    y += is58mm ? 22 : 26;
 
     if (data.address) {
-      ctx.font = `400 ${is58mm ? '13px' : '15px'} ${fontPrimary}`;
+      ctx.font = `400 ${is58mm ? '14px' : '17px'} ${fontPrimary}`;
       ctx.fillText(data.address, centerX, y);
-      y += is58mm ? 18 : 22;
+      y += is58mm ? 20 : 24;
     }
 
-    y += 6;
+    y += 8;
 
-    // --- 3. DATE & ORDER META ---
+    // --- 3. DATE & TIME (Requested size: 20px) ---
     const dateObj = new Date(data.order.createdAt);
     const dateY = dateObj.getFullYear();
     const dateM = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -199,10 +191,10 @@ export class ReceiptImageRenderer {
     dateH = dateH % 12 || 12;
     const formattedDateTime = `${dateY}/${dateM}/${dateD} ${String(dateH).padStart(2, '0')}:${dateMin}:${dateSec} ${ampm}`;
 
-    ctx.font = `400 ${is58mm ? '13px' : '15px'} ${fontPrimary}`;
+    ctx.font = `bold ${is58mm ? '16px' : '20px'} ${fontPrimary}`;
     ctx.textAlign = 'center';
     ctx.fillText(`${tr.printedAt} ${formattedDateTime}`, centerX, y);
-    y += is58mm ? 22 : 26;
+    y += is58mm ? 26 : 30;
 
     const drawDashedLine = (curY: number) => {
       ctx.save();
@@ -228,7 +220,7 @@ export class ReceiptImageRenderer {
     };
 
     drawDashedLine(y);
-    y += 10;
+    y += 12;
 
     const orderTypeLabel = data.order.type === 'dine_in' ? tr.dineIn : data.order.type === 'takeaway' ? tr.takeaway : tr.delivery;
     const tableLabel = data.tableName || (data.order.tableId ? `${tr.table} ${data.order.tableId}` : '');
@@ -238,25 +230,25 @@ export class ReceiptImageRenderer {
     const posStart = isRtl ? rightX : leftX;
     const posEnd = isRtl ? leftX : rightX;
 
-    ctx.font = `bold ${is58mm ? '14px' : '17px'} ${fontPrimary}`;
+    ctx.font = `bold ${is58mm ? '16px' : '20px'} ${fontPrimary}`;
     ctx.textAlign = alignStart;
     ctx.fillText(`${orderTypeLabel} ${tableLabel ? `(${tableLabel})` : ''}`, posStart, y);
 
     ctx.textAlign = alignEnd;
     ctx.fillText(`${tr.orderNo} ${data.order.invoiceCode || data.order.id.slice(0, 8).toUpperCase()}`, posEnd, y);
-    y += is58mm ? 24 : 28;
+    y += is58mm ? 26 : 30;
 
     // --- 4. TABLE HEADER ---
-    drawSolidLine(y, 1.5);
-    y += 6;
+    drawSolidLine(y, 2);
+    y += 8;
 
-    const qtyWidth = is58mm ? 40 : 50;
+    const qtyWidth = is58mm ? 45 : 55;
 
     const qtyX = isRtl ? rightX : leftX;
     const itemX = isRtl ? rightX - qtyWidth - 10 : leftX + qtyWidth + 10;
     const priceX = isRtl ? leftX : rightX;
 
-    ctx.font = `bold ${is58mm ? '14px' : '17px'} ${fontPrimary}`;
+    ctx.font = `bold ${is58mm ? '17px' : '22px'} ${fontPrimary}`;
     ctx.textAlign = isRtl ? 'right' : 'left';
     ctx.fillText(tr.qty, qtyX, y);
 
@@ -265,12 +257,12 @@ export class ReceiptImageRenderer {
 
     ctx.textAlign = isRtl ? 'left' : 'right';
     ctx.fillText(tr.price, priceX, y);
-    y += is58mm ? 22 : 26;
+    y += is58mm ? 26 : 30;
 
-    drawSolidLine(y, 1.5);
-    y += 8;
+    drawSolidLine(y, 2);
+    y += 10;
 
-    // --- 5. ITEMS LIST ---
+    // --- 5. ITEMS LIST (Requested size: 25px, Addons: 22px) ---
     data.order.items.forEach((item) => {
       const menuItem = data.menuItems.find((m) => m.id === item.menuItemId);
       let itemName = 'Item';
@@ -285,7 +277,7 @@ export class ReceiptImageRenderer {
 
       const itemTotal = item.price * item.quantity;
 
-      ctx.font = `600 ${is58mm ? '14px' : '17px'} ${fontPrimary}`;
+      ctx.font = `bold ${is58mm ? '20px' : '25px'} ${fontPrimary}`;
       ctx.textAlign = isRtl ? 'right' : 'left';
       ctx.fillText(String(item.quantity), qtyX, y);
 
@@ -294,86 +286,75 @@ export class ReceiptImageRenderer {
 
       ctx.textAlign = isRtl ? 'left' : 'right';
       ctx.fillText(`${curr} ${itemTotal.toLocaleString()}`, priceX, y);
-      y += is58mm ? 24 : 28;
+      y += is58mm ? 28 : 34;
 
       if (item.selectedAddons && item.selectedAddons.length > 0) {
         item.selectedAddons.forEach((addon) => {
           const aName = lang === 'ku' ? (addon.nameKu || addon.nameEn) : lang === 'ar' ? (addon.nameAr || addon.nameEn) : (addon.nameEn || 'Addon');
-          ctx.font = `400 ${is58mm ? '12px' : '14px'} ${fontPrimary}`;
+          ctx.font = `500 ${is58mm ? '17px' : '22px'} ${fontPrimary}`;
           ctx.textAlign = isRtl ? 'right' : 'left';
           ctx.fillText(`  ↳ + ${aName} ${addon.price > 0 ? `(+${curr} ${(addon.price * item.quantity).toLocaleString()})` : ''}`, itemX, y);
-          y += is58mm ? 18 : 22;
+          y += is58mm ? 24 : 28;
         });
       }
 
       if (item.notes) {
-        ctx.font = `italic 400 ${is58mm ? '11px' : '13px'} ${fontPrimary}`;
+        ctx.font = `italic 400 ${is58mm ? '13px' : '16px'} ${fontPrimary}`;
         ctx.textAlign = isRtl ? 'right' : 'left';
         ctx.fillText(`  * Note: ${item.notes}`, itemX, y);
-        y += is58mm ? 18 : 22;
+        y += is58mm ? 20 : 24;
       }
     });
 
-    // --- 6. SUMMARY ---
-    y += 2;
+    // --- 6. SUMMARY (NO SUBTOTAL, NO PAYMENT, ONLY TOTAL AT 30px) ---
+    y += 4;
     drawDashedLine(y);
     y += 10;
 
-    const drawSummaryRow = (label: string, value: string, isBold = false) => {
-      ctx.font = `${isBold ? 'bold' : '500'} ${is58mm ? '14px' : '17px'} ${fontPrimary}`;
-      ctx.textAlign = alignStart;
-      ctx.fillText(label, posStart, y);
-
-      ctx.textAlign = alignEnd;
-      ctx.fillText(value, posEnd, y);
-      y += is58mm ? 22 : 26;
-    };
-
-    drawSummaryRow(tr.subtotal, `${curr} ${data.order.subtotal.toLocaleString()}`);
-
     if (data.order.discount > 0) {
-      drawSummaryRow(tr.discount, `-${curr} ${data.order.discount.toLocaleString()}`);
+      ctx.font = `bold ${is58mm ? '16px' : '20px'} ${fontPrimary}`;
+      ctx.textAlign = alignStart;
+      ctx.fillText(tr.discount, posStart, y);
+      ctx.textAlign = alignEnd;
+      ctx.fillText(`-${curr} ${data.order.discount.toLocaleString()}`, posEnd, y);
+      y += is58mm ? 24 : 28;
     }
 
     if (data.order.serviceCharge && data.order.serviceCharge > 0) {
-      drawSummaryRow(tr.serviceCharge, `+${curr} ${data.order.serviceCharge.toLocaleString()}`);
+      ctx.font = `bold ${is58mm ? '16px' : '20px'} ${fontPrimary}`;
+      ctx.textAlign = alignStart;
+      ctx.fillText(tr.serviceCharge, posStart, y);
+      ctx.textAlign = alignEnd;
+      ctx.fillText(`+${curr} ${data.order.serviceCharge.toLocaleString()}`, posEnd, y);
+      y += is58mm ? 24 : 28;
     }
 
-    y += 4;
-    drawSolidLine(y, 2.5);
-    y += 8;
+    drawSolidLine(y, 3);
+    y += 10;
 
-    // --- 7. GRAND TOTAL (ONLY BOLD & LARGE AS REQUESTED!) ---
-    ctx.font = `900 ${is58mm ? '20px' : '26px'} ${fontPrimary}`;
+    // --- 7. GRAND TOTAL (Requested size: 30px) ---
+    ctx.font = `900 ${is58mm ? '24px' : '30px'} ${fontPrimary}`;
     ctx.textAlign = alignStart;
     ctx.fillText(tr.total, posStart, y);
 
     ctx.textAlign = alignEnd;
     ctx.fillText(`${curr} ${data.order.total.toLocaleString()}`, posEnd, y);
-    y += is58mm ? 30 : 36;
+    y += is58mm ? 36 : 42;
 
-    drawSolidLine(y, 2.5);
-    y += 10;
-
-    // Payment
-    const paymentLabel = data.order.paymentMethod === 'card' ? (isRtl ? 'شێوازی پارەدان - کارت' : 'Payment - Card') : tr.payment;
-    drawSummaryRow(paymentLabel, `${curr} ${data.order.total.toLocaleString()}`);
-
-    // --- 8. FOOTER ---
-    y += 4;
-    drawSolidLine(y, 1);
+    drawSolidLine(y, 3);
     y += 12;
 
+    // --- 8. FOOTER ---
     const totalItemCount = data.order.items.reduce((sum, it) => sum + it.quantity, 0);
 
     ctx.textAlign = 'center';
-    ctx.font = `600 ${is58mm ? '13px' : '15px'} ${fontPrimary}`;
+    ctx.font = `bold ${is58mm ? '15px' : '18px'} ${fontPrimary}`;
     ctx.fillText(`${tr.productsCount}: ${totalItemCount}`, centerX, y);
-    y += is58mm ? 20 : 24;
+    y += is58mm ? 24 : 28;
 
-    ctx.font = `500 ${is58mm ? '13px' : '15px'} ${fontPrimary}`;
+    ctx.font = `500 ${is58mm ? '14px' : '17px'} ${fontPrimary}`;
     ctx.fillText(data.footerText || tr.thanks, centerX, y);
-    y += is58mm ? 22 : 26;
+    y += is58mm ? 24 : 28;
 
     ctx.font = `bold ${is58mm ? '11px' : '13px'} ${fontPrimary}`;
     ctx.fillStyle = '#333333';

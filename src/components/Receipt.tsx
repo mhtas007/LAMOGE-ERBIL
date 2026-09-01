@@ -271,52 +271,39 @@ export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride }) => 
       )}
 
       {/* 6. Summary Rows */}
-      <div className="border-t border-black/30 my-1.5"></div>
-      <div className="space-y-1 text-[11.5px] text-black">
-        <div className="flex justify-between">
-          <span>{tr.subtotal}</span>
-          <span>{formatPrice(displayOrder.subtotal)}</span>
-        </div>
+      <div className="border-t border-black/30 my-2"></div>
+      <div className="space-y-1 text-xs text-black">
         {displayOrder.discount > 0 && (
-          <div className="flex justify-between">
+          <div className="flex justify-between font-medium">
             <span>{tr.discount}</span>
             <span>-{formatPrice(displayOrder.discount)}</span>
           </div>
         )}
         {displayOrder.serviceCharge && displayOrder.serviceCharge > 0 ? (
-          <div className="flex justify-between">
+          <div className="flex justify-between font-medium">
             <span>{tr.serviceCharge}</span>
             <span>+{formatPrice(displayOrder.serviceCharge)}</span>
           </div>
         ) : null}
 
-        {/* 7. Total Row - ONLY ONE BOLD AS REQUESTED! */}
-        <div className="border-t border-dashed border-black/50 my-1.5"></div>
-        <div className="flex justify-between items-center text-sm font-black text-black py-0.5">
-          <span className="font-black text-sm uppercase">{tr.total}</span>
-          <span className="font-black text-sm">{formatPrice(displayOrder.total)}</span>
+        {/* 7. Total Row - Large Bold Total */}
+        <div className="border-t-2 border-black my-2"></div>
+        <div className="flex justify-between items-center text-lg font-black text-black py-1">
+          <span className="font-black uppercase">{tr.total}</span>
+          <span className="font-black">{formatPrice(displayOrder.total)}</span>
         </div>
-        <div className="border-t border-dashed border-black/50 my-1.5"></div>
-
-        {/* Payment Row */}
-        <div className="flex justify-between text-[11px] pt-0.5">
-          <span>
-            {displayOrder.paymentMethod === 'card' ? (isRtl ? 'شێوازی پارەدان - کارت' : 'Payment - Card') : tr.payment}
-          </span>
-          <span>{formatPrice(displayOrder.total)}</span>
-        </div>
+        <div className="border-t-2 border-black my-2"></div>
       </div>
 
       {/* 8. Products Count & Footer */}
-      <div className="border-t border-black/30 my-2"></div>
-      <div className="text-center text-[10.5px] space-y-1 text-black">
-        <div className="font-medium">
-          {tr.productsCount} {totalItemCount}
+      <div className="text-center text-xs space-y-1 mt-3 text-black">
+        <div className="font-semibold text-xs">
+          {tr.productsCount}: {totalItemCount}
         </div>
-        <div>
+        <div className="text-xs">
           {receiptSettings.footerText || tr.thanks}
         </div>
-        <div className="text-[9px] uppercase tracking-widest text-black/60 pt-1 font-semibold">
+        <div className="text-[10px] uppercase tracking-widest text-black/60 pt-1 font-bold">
           POWERED BY MAS MENU
         </div>
       </div>
