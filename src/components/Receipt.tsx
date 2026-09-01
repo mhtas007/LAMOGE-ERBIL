@@ -91,8 +91,8 @@ export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride }) => 
 
   return (
     <div
-      className={`receipt-paper bg-white text-black p-4 sm:p-5 text-xs shadow-md mx-auto print:shadow-none print:p-0 print:m-0 print:border-none ${
-        (rLang === 'ku' || rLang === 'ar') ? 'text-right font-sans' : 'text-left font-mono'
+      className={`receipt-paper bg-white text-black p-4 text-xs mx-auto print:p-0 print:m-0 print:border-none font-mono ${
+        (rLang === 'ku' || rLang === 'ar') ? 'text-right' : 'text-left'
       }`}
       style={{
         width: receiptWidthStyle,
@@ -100,77 +100,80 @@ export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride }) => 
         direction: (rLang === 'ku' || rLang === 'ar') ? 'rtl' : 'ltr',
         color: '#000000',
         backgroundColor: '#ffffff',
-        lineHeight: 1.4,
+        lineHeight: 1.5,
       }}
     >
-      {/* Brand Header */}
-      <div className="text-center mb-4">
-        {receiptSettings.logo ? (
-          <div className="flex justify-center items-center mb-2.5">
+      {/* Centered Circular Logo */}
+      <div className="flex justify-center mb-3">
+        <div className="w-16 h-16 rounded-full border border-gray-300 p-1 flex items-center justify-center overflow-hidden bg-white">
+          {receiptSettings.logo ? (
             <img
               src={receiptSettings.logo}
               alt="Logo"
-              className="max-h-20 max-w-[130px] object-contain mx-auto grayscale"
-              style={{
-                filter: 'grayscale(100%) contrast(140%)',
-                imageRendering: 'crisp-edges',
-              }}
+              className="w-full h-full object-contain rounded-full grayscale"
+              style={{ filter: 'grayscale(100%) contrast(140%)' }}
             />
-          </div>
-        ) : null}
-        <h1 className="text-lg sm:text-xl font-black tracking-wider uppercase text-black">
-          {receiptSettings.cafeName || 'MAS CAFE'}
-        </h1>
-        {receiptSettings.headerText && (
-          <p className="whitespace-pre-wrap text-[11px] font-medium text-black/90 mt-1">
-            {receiptSettings.headerText}
-          </p>
-        )}
-        {receiptSettings.address && (
-          <p className="whitespace-pre-wrap text-[10px] text-black/80 mt-0.5">{receiptSettings.address}</p>
-        )}
-        {receiptSettings.phone && (
-          <p className="text-[10px] text-black/80 mt-0.5">📞 {receiptSettings.phone}</p>
-        )}
-        {receiptSettings.showVat && receiptSettings.taxId && (
-          <p className="text-[10px] text-black/80 mt-0.5">VAT / Tax: {receiptSettings.taxId}</p>
-        )}
+          ) : (
+            <div className="w-12 h-12 rounded-full border border-gray-200 flex items-center justify-center text-xl">
+              ☕
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Separator */}
-      <div className="border-t-2 border-black my-2"></div>
+      {/* Brand Header */}
+      <div className="text-center mb-2 space-y-0.5 font-mono">
+        <h1 className="text-sm sm:text-base font-black tracking-widest uppercase text-black">
+          {receiptSettings.cafeName || 'LAMOGE CAFE'}
+        </h1>
+        <p className="text-[11px] text-black">
+          {receiptSettings.headerText || `Welcome to ${receiptSettings.cafeName || 'Lamoge Cafe'}`}
+        </p>
+        {receiptSettings.address && (
+          <p className="text-[11px] text-black">{receiptSettings.address}</p>
+        )}
+        <p className="text-[11px] text-black">
+          {receiptSettings.phone ? `Tel: ${receiptSettings.phone}` : 'Tel:'}
+        </p>
+      </div>
 
-      {/* Invoice Meta Grid */}
-      <div className="bg-black/5 p-2 rounded-lg mb-3 text-[11px] space-y-1 text-black font-medium">
+      {/* Dashed Separator */}
+      <div className="border-t border-dashed border-gray-400 my-2"></div>
+
+      {/* Order Meta Info */}
+      <div className="space-y-1 text-[11px] text-black font-mono">
         <div className="flex justify-between items-center">
-          <span className="opacity-75">{tr.orderNo}:</span>
-          <span className="font-mono font-black text-xs">
-            {displayOrder.invoiceCode || `#${displayOrder.id.slice(0, 8)}`}
+          <span>{tr.date}:</span>
+          <span>{formattedDate} {formattedTime}</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span>{tr.orderNo}:</span>
+          <span className="font-bold">
+            {displayOrder.invoiceCode || `INV-${displayOrder.id.slice(0, 8).toUpperCase()}`}
           </span>
         </div>
         <div className="flex justify-between items-center">
-          <span className="opacity-75">{tr.date}:</span>
-          <span>{formattedDate} - {formattedTime}</span>
-        </div>
-        <div className="flex justify-between items-center pt-0.5 border-t border-black/10">
-          <span className="opacity-75">{tr.type}:</span>
+          <span>{tr.type}:</span>
           <span className="font-bold uppercase">
-            {displayOrder.type === 'dine_in' ? '🍽️ Dine-in' : displayOrder.type === 'takeaway' ? '🥡 Takeaway' : '🛵 Delivery'}
+            {displayOrder.type === 'dine_in' ? 'DINE IN' : displayOrder.type === 'takeaway' ? 'TAKEAWAY' : 'DELIVERY'}
           </span>
         </div>
         {displayOrder.type === 'dine_in' && displayOrder.tableId && (
           <div className="flex justify-between items-center">
-            <span className="opacity-75">{tr.table}:</span>
-            <span className="font-black text-xs">
+            <span>{tr.table}:</span>
+            <span className="font-bold">
               {tables?.find((t) => t.id === displayOrder.tableId)?.number || displayOrder.tableId}
             </span>
           </div>
         )}
       </div>
 
+      {/* Dashed Separator */}
+      <div className="border-t border-dashed border-gray-400 my-2"></div>
+
       {/* Items Table */}
-      <div className="mb-3 text-black">
-        <div className="flex justify-between font-black text-[11px] border-b-2 border-black pb-1 mb-1.5 uppercase">
+      <div className="mb-2 text-black font-mono">
+        <div className="flex justify-between font-bold text-[11px] pb-1 mb-1">
           <span className="w-1/2">{tr.item}</span>
           <span className="w-1/4 text-center">{tr.qty}</span>
           <span className="w-1/4 text-right">{tr.price}</span>
@@ -185,39 +188,33 @@ export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride }) => 
               : menuItem.nameEn
             : `Item #${item.menuItemId}`;
           const itemTotal = item.price * item.quantity;
-          const addonsText =
-            item.selectedAddons && item.selectedAddons.length > 0
-              ? item.selectedAddons
-                  .map((a) => (rLang === 'ku' ? a.nameKu : rLang === 'ar' ? a.nameAr : a.nameEn))
-                  .join(', ')
-              : null;
 
           return (
-            <div key={idx} className="py-1 border-b border-dashed border-black/20 text-[11px]">
-              <div className="flex justify-between items-start">
-                <div className="w-1/2 pr-1 font-bold text-black leading-tight">
+            <div key={idx} className="py-0.5 text-[11px]">
+              <div className="flex justify-between items-start font-bold">
+                <div className="w-1/2 pr-1 text-black">
                   {itemName}
                   {item.variantName && (
-                    <span className="block text-[10px] font-normal text-black/75">
+                    <span className="block text-[10px] font-normal text-black/70">
                       ({item.variantName})
                     </span>
                   )}
                 </div>
-                <div className="w-1/4 text-center font-black text-black">{item.quantity}</div>
-                <div className="w-1/4 text-right font-bold text-black font-mono">
+                <div className="w-1/4 text-center text-black font-normal">{item.quantity}</div>
+                <div className="w-1/4 text-right font-normal">
                   {itemTotal.toLocaleString()}
                 </div>
               </div>
               {item.selectedAddons && item.selectedAddons.length > 0 && (
-                <div className="text-[10px] text-black/80 pl-2 mt-0.5 space-y-0.5">
+                <div className="text-[10px] text-black/80 pl-2 mt-0.5 space-y-0.5 font-normal">
                   {item.selectedAddons.map((addon, aIdx) => {
                     const addonName = rLang === 'ku' ? addon.nameKu : rLang === 'ar' ? addon.nameAr : addon.nameEn;
                     return (
-                      <div key={aIdx} className="flex justify-between items-center italic">
+                      <div key={aIdx} className="flex justify-between items-center">
                         <span>↳ + {addonName}</span>
                         {addon.price > 0 && (
-                          <span className="font-mono not-italic text-[9px] font-bold text-black/90">
-                            (+{addon.price.toLocaleString()} {receiptSettings.currency})
+                          <span className="text-[9px]">
+                            (+{addon.price.toLocaleString()})
                           </span>
                         )}
                       </div>
@@ -231,56 +228,64 @@ export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride }) => 
       </div>
 
       {displayOrder.notes && (
-        <div className="bg-black/5 p-2 rounded mb-3 text-[10px] text-black italic">
-          <span className="font-bold not-italic">📝 {tr.notes || (rLang === 'ku' ? 'تێبینی' : 'Note')}:</span> {displayOrder.notes}
+        <div className="p-1.5 rounded mb-2 text-[10px] text-black italic border border-dashed border-gray-300">
+          <span className="font-bold not-italic">Note:</span> {displayOrder.notes}
         </div>
       )}
 
+      {/* Dashed Separator */}
+      <div className="border-t border-dashed border-gray-400 my-2"></div>
+
       {/* Totals Summary */}
-      <div className="space-y-1 text-xs text-black border-t-2 border-black pt-2 mb-3">
+      <div className="space-y-1 text-[11px] text-black font-mono">
         <div className="flex justify-between">
-          <span className="font-medium text-black/80">{tr.subtotal}:</span>
-          <span className="font-mono font-bold">{displayOrder.subtotal.toLocaleString()} {receiptSettings.currency}</span>
+          <span>{tr.subtotal}:</span>
+          <span>{displayOrder.subtotal.toLocaleString()}</span>
         </div>
         {displayOrder.discount > 0 && (
-          <div className="flex justify-between text-black font-medium">
+          <div className="flex justify-between">
             <span>{tr.discount}:</span>
-            <span className="font-mono">-{displayOrder.discount.toLocaleString()} {receiptSettings.currency}</span>
+            <span>-{displayOrder.discount.toLocaleString()}</span>
           </div>
         )}
         {displayOrder.serviceCharge && displayOrder.serviceCharge > 0 ? (
-          <div className="flex justify-between text-black font-medium">
-            <span>{tr.serviceCharge || 'Service Charge'}:</span>
-            <span className="font-mono">+{displayOrder.serviceCharge.toLocaleString()} {receiptSettings.currency}</span>
+          <div className="flex justify-between">
+            <span>{tr.serviceCharge}:</span>
+            <span>+{displayOrder.serviceCharge.toLocaleString()}</span>
           </div>
         ) : null}
 
-        {/* Grand Total Box */}
-        <div className="flex justify-between items-center font-black text-sm sm:text-base mt-2 p-2 bg-black text-white rounded">
-          <span className="uppercase tracking-wider">{tr.total}:</span>
-          <span className="font-mono font-black text-base">
-            {displayOrder.total.toLocaleString()} {receiptSettings.currency}
+        {/* Solid Line Separator */}
+        <div className="border-t border-gray-300 my-1"></div>
+
+        {/* Grand Total */}
+        <div className="flex justify-between items-center font-black text-sm pt-0.5">
+          <span className="uppercase">{tr.total}:</span>
+          <span>
+            {(rLang === 'ku' || rLang === 'ar') ? `IQD ${displayOrder.total.toLocaleString()}` : `${displayOrder.total.toLocaleString()} IQD`}
           </span>
         </div>
 
-        {displayOrder.paymentMethod && (
-          <div className="flex justify-between text-[11px] pt-1 text-black/80 font-medium">
-            <span>{tr.payment}:</span>
-            <span className="uppercase font-bold">💳 {displayOrder.paymentMethod}</span>
-          </div>
-        )}
+        {/* Payment */}
+        <div className="flex justify-between text-[11px] pt-0.5">
+          <span>{tr.payment}:</span>
+          <span className="uppercase font-normal">{displayOrder.paymentMethod ? displayOrder.paymentMethod.toUpperCase() : 'CASH'}</span>
+        </div>
       </div>
 
-      {/* Footer & Barcode Decorative */}
-      <div className="text-center text-[10px] space-y-1.5 mt-4 text-black border-t-2 border-dashed border-black/40 pt-3">
-        {receiptSettings.footerText && (
-          <p className="whitespace-pre-wrap font-medium leading-relaxed">{receiptSettings.footerText}</p>
-        )}
-        <div className="py-1 text-xs tracking-widest opacity-60 font-mono">
-          ★ ★ ★ ★ ★
+      {/* Dashed Separator */}
+      <div className="border-t border-dashed border-gray-400 my-2.5"></div>
+
+      {/* Footer */}
+      <div className="text-center text-[11px] space-y-1 mt-2 text-black font-mono">
+        <p className="font-normal">
+          {receiptSettings.footerText || 'Thank you for your visit!'}
+        </p>
+        <div className="py-0.5 tracking-widest text-xs font-mono">
+          ***
         </div>
-        <p className="text-[9px] font-black tracking-widest uppercase opacity-70">
-          POWERED BY MAS POS
+        <p className="text-[9px] uppercase tracking-wider text-gray-500 pt-1">
+          POWERED BY MAS MENU
         </p>
       </div>
     </div>
