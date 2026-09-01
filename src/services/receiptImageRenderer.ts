@@ -59,7 +59,7 @@ export class ReceiptImageRenderer {
         takeaway: 'Takeaway',
         delivery: 'Delivery',
         thanks: 'سەردانەکەت جێگەی دڵخۆشیمانە',
-        pleasure: 'چێژی تایەتی تامی خۆش',
+        pleasure: 'چێژی تایبەتی تامی خۆش',
       },
       ar: {
         printedAt: 'وقت الطباعة:',
@@ -159,7 +159,7 @@ export class ReceiptImageRenderer {
       }
     }
 
-    // --- 2. CAFE NAME (Requested size: 30px) ---
+    // --- 2. CAFE NAME (30px) ---
     ctx.direction = isRtl ? 'rtl' : 'ltr';
     ctx.textAlign = 'center';
 
@@ -179,7 +179,7 @@ export class ReceiptImageRenderer {
 
     y += 8;
 
-    // --- 3. DATE & TIME (Requested size: 20px) ---
+    // --- 3. DATE & TIME (20px - lighter for Kurdish/Arabic, bold for English) ---
     const dateObj = new Date(data.order.createdAt);
     const dateY = dateObj.getFullYear();
     const dateM = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -191,7 +191,8 @@ export class ReceiptImageRenderer {
     dateH = dateH % 12 || 12;
     const formattedDateTime = `${dateY}/${dateM}/${dateD} ${String(dateH).padStart(2, '0')}:${dateMin}:${dateSec} ${ampm}`;
 
-    ctx.font = `bold ${is58mm ? '16px' : '20px'} ${fontPrimary}`;
+    const dateWeight = isRtl ? '500' : 'bold';
+    ctx.font = `${dateWeight} ${is58mm ? '16px' : '20px'} ${fontPrimary}`;
     ctx.textAlign = 'center';
     ctx.fillText(`${tr.printedAt} ${formattedDateTime}`, centerX, y);
     y += is58mm ? 26 : 30;
@@ -230,7 +231,8 @@ export class ReceiptImageRenderer {
     const posStart = isRtl ? rightX : leftX;
     const posEnd = isRtl ? leftX : rightX;
 
-    ctx.font = `bold ${is58mm ? '16px' : '20px'} ${fontPrimary}`;
+    const metaWeight = isRtl ? '600' : 'bold';
+    ctx.font = `${metaWeight} ${is58mm ? '16px' : '20px'} ${fontPrimary}`;
     ctx.textAlign = alignStart;
     ctx.fillText(`${orderTypeLabel} ${tableLabel ? `(${tableLabel})` : ''}`, posStart, y);
 
@@ -248,7 +250,8 @@ export class ReceiptImageRenderer {
     const itemX = isRtl ? rightX - qtyWidth - 10 : leftX + qtyWidth + 10;
     const priceX = isRtl ? leftX : rightX;
 
-    ctx.font = `bold ${is58mm ? '17px' : '22px'} ${fontPrimary}`;
+    const tableHeaderWeight = isRtl ? '600' : 'bold';
+    ctx.font = `${tableHeaderWeight} ${is58mm ? '17px' : '22px'} ${fontPrimary}`;
     ctx.textAlign = isRtl ? 'right' : 'left';
     ctx.fillText(tr.qty, qtyX, y);
 
@@ -262,7 +265,10 @@ export class ReceiptImageRenderer {
     drawSolidLine(y, 2);
     y += 10;
 
-    // --- 5. ITEMS LIST (Requested size: 25px, Addons: 22px) ---
+    // --- 5. ITEMS LIST (Lighter 500 for Kurdish/Arabic, Bold for English) ---
+    const itemWeight = isRtl ? '500' : 'bold';
+    const addonWeight = isRtl ? '400' : '500';
+
     data.order.items.forEach((item) => {
       const menuItem = data.menuItems.find((m) => m.id === item.menuItemId);
       let itemName = 'Item';
@@ -277,7 +283,7 @@ export class ReceiptImageRenderer {
 
       const itemTotal = item.price * item.quantity;
 
-      ctx.font = `bold ${is58mm ? '20px' : '25px'} ${fontPrimary}`;
+      ctx.font = `${itemWeight} ${is58mm ? '20px' : '25px'} ${fontPrimary}`;
       ctx.textAlign = isRtl ? 'right' : 'left';
       ctx.fillText(String(item.quantity), qtyX, y);
 
@@ -291,7 +297,7 @@ export class ReceiptImageRenderer {
       if (item.selectedAddons && item.selectedAddons.length > 0) {
         item.selectedAddons.forEach((addon) => {
           const aName = lang === 'ku' ? (addon.nameKu || addon.nameEn) : lang === 'ar' ? (addon.nameAr || addon.nameEn) : (addon.nameEn || 'Addon');
-          ctx.font = `500 ${is58mm ? '17px' : '22px'} ${fontPrimary}`;
+          ctx.font = `${addonWeight} ${is58mm ? '17px' : '22px'} ${fontPrimary}`;
           ctx.textAlign = isRtl ? 'right' : 'left';
           ctx.fillText(`  ↳ + ${aName} ${addon.price > 0 ? `(+${curr} ${(addon.price * item.quantity).toLocaleString()})` : ''}`, itemX, y);
           y += is58mm ? 24 : 28;
@@ -306,13 +312,13 @@ export class ReceiptImageRenderer {
       }
     });
 
-    // --- 6. SUMMARY (NO SUBTOTAL, NO PAYMENT, ONLY TOTAL AT 30px) ---
+    // --- 6. SUMMARY ---
     y += 4;
     drawDashedLine(y);
     y += 10;
 
     if (data.order.discount > 0) {
-      ctx.font = `bold ${is58mm ? '16px' : '20px'} ${fontPrimary}`;
+      ctx.font = `${itemWeight} ${is58mm ? '16px' : '20px'} ${fontPrimary}`;
       ctx.textAlign = alignStart;
       ctx.fillText(tr.discount, posStart, y);
       ctx.textAlign = alignEnd;
@@ -321,7 +327,7 @@ export class ReceiptImageRenderer {
     }
 
     if (data.order.serviceCharge && data.order.serviceCharge > 0) {
-      ctx.font = `bold ${is58mm ? '16px' : '20px'} ${fontPrimary}`;
+      ctx.font = `${itemWeight} ${is58mm ? '16px' : '20px'} ${fontPrimary}`;
       ctx.textAlign = alignStart;
       ctx.fillText(tr.serviceCharge, posStart, y);
       ctx.textAlign = alignEnd;
@@ -332,8 +338,9 @@ export class ReceiptImageRenderer {
     drawSolidLine(y, 3);
     y += 10;
 
-    // --- 7. GRAND TOTAL (Requested size: 30px) ---
-    ctx.font = `900 ${is58mm ? '24px' : '30px'} ${fontPrimary}`;
+    // --- 7. GRAND TOTAL (700 for Kurdish/Arabic, 900 for English) ---
+    const totalWeight = isRtl ? '700' : '900';
+    ctx.font = `${totalWeight} ${is58mm ? '24px' : '30px'} ${fontPrimary}`;
     ctx.textAlign = alignStart;
     ctx.fillText(tr.total, posStart, y);
 
@@ -387,7 +394,7 @@ export class ReceiptImageRenderer {
         const b = pixels[pIdx + 2];
         const a = pixels[pIdx + 3];
 
-        // Strict high-contrast black pixel detection for crystal clear thermal print
+        // High-contrast black pixel detection for crystal clear thermal print
         const lum = r * 0.299 + g * 0.587 + b * 0.114;
         const isBlack = a > 40 && lum < 205;
         if (isBlack) {
