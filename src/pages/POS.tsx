@@ -273,10 +273,10 @@ export const POS: React.FC = () => {
       }, 500);
     } catch (err: any) {
       console.warn('[POS Checkout] Silent network print exception:', err.message);
-      showToast(
-        isRtl ? `پەیوەندی لەگەڵ پرینتەری نێتۆرک نەبەسترا. دەتوانیت دوگمەی چاپ دابگریت.` : `Network printer unreachable. You can tap Print manually.`,
-        'error'
-      );
+      // Automatic fallback to native iPad AirPrint / Browser printing
+      setTimeout(() => {
+        window.print();
+      }, 400);
     } finally {
       setIsSilentPrinting(false);
     }
