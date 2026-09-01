@@ -531,53 +531,11 @@ export const Dashboard: React.FC = () => {
                     />
                     <p className="text-xs text-natural-text-tertiary mt-1.5">
                       {isRtl 
-                        ? 'تکایە بڕی پارەی ناو دەماخە بە دروستی بنووسە بۆ ڕاپۆرتەکە.' 
-                        : 'Please enter the exact cash amount remaining in the cash register.'}
+                        ? 'تکایە بڕی پارەی ناو دەماخە بنووسە بۆ تۆمارکردن.' 
+                        : 'Please enter the exact cash amount in the drawer.'}
                     </p>
                   </div>
                 )}
-
-                {/* Telegram Gatekeeper Step */}
-                <div className="bg-natural-bg border border-natural-border rounded-2xl p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-natural-text-secondary uppercase tracking-wider">
-                      {isRtl ? 'مەرجی تەلەگرام' : 'Required Step'}
-                    </span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${reportSentSuccessfully ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700 animate-pulse'}`}>
-                      {reportSentSuccessfully ? (isRtl ? 'ڕاپۆرت نێردرا' : 'Sent') : (isRtl ? 'نەنێردراوە' : 'Pending Send')}
-                    </span>
-                  </div>
-                  
-                  <p className="text-xs text-natural-text-secondary leading-relaxed">
-                    {isRtl 
-                      ? 'بۆ ڕێگری لە ونبوونی زانیارییەکان، دەبێت سەرەتا ڕاپۆرتی دەوامەکە بۆ خاوەن کار بنێریت لە تەلەگرام.' 
-                      : 'To finalize your shift, you are required to transmit the final sales report to the business owner via Telegram.'}
-                  </p>
-
-                  <button
-                    onClick={() => sendTelegramReport('clockout', Number(declaredCash) || 0)}
-                    disabled={isSendingReport}
-                    className={`w-full py-3 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
-                      reportSentSuccessfully 
-                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
-                        : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm'
-                    }`}
-                  >
-                    {isSendingReport ? (
-                      <span>{isRtl ? 'دەنێردرێت...' : 'Sending Report...'}</span>
-                    ) : reportSentSuccessfully ? (
-                      <>✅ {isRtl ? 'ڕاپۆرتەکە بە سەرکەوتوویی نێردرا!' : 'Report Sent Successfully!'}</>
-                    ) : (
-                      <>{isRtl ? 'ناردنی ڕاپۆرتی دەوام بۆ تەلەگرام' : 'Send Shift Report to Telegram'}</>
-                    )}
-                  </button>
-
-                  {telegramError && (
-                    <div className="text-[11px] text-rose-600 font-medium leading-normal bg-rose-50 border border-rose-100 p-2 rounded-lg">
-                      ⚠️ {telegramError}
-                    </div>
-                  )}
-                </div>
 
                 <div className="flex justify-end gap-3 pt-4 border-t border-natural-border">
                   <button 
@@ -587,17 +545,11 @@ export const Dashboard: React.FC = () => {
                     {t('cancel')}
                   </button>
                   <button 
-                    disabled={!reportSentSuccessfully}
                     onClick={() => {
                       clockOut(Number(declaredCash) || 0);
                       setIsClockOutModalOpen(false);
                     }}
-                    className={`px-6 py-3 rounded-xl font-bold text-sm transition-all shadow-md active:scale-95 flex items-center gap-1.5 ${
-                      reportSentSuccessfully 
-                        ? 'bg-red-600 hover:bg-red-700 text-white cursor-pointer' 
-                        : 'bg-natural-bg text-natural-text-tertiary border border-natural-border cursor-not-allowed opacity-60'
-                    }`}
-                    title={!reportSentSuccessfully ? "Please send Telegram report first" : undefined}
+                    className="px-6 py-3 rounded-xl font-bold text-sm bg-red-600 hover:bg-red-700 text-white transition-all shadow-md active:scale-95 flex items-center gap-1.5 cursor-pointer"
                   >
                     {isRtl ? 'کۆتایی دەوام' : 'Complete Shift'}
                   </button>
@@ -620,45 +572,9 @@ export const Dashboard: React.FC = () => {
             <div className="space-y-6">
               <p className="text-sm text-natural-text-secondary leading-relaxed">
                 {isRtl 
-                  ? 'ئایا دڵنیایت لە چوونەدەرەوە لەم جۆراوەی کار؟ مەرجە سەرەتا ڕاپۆرتی چوونەدەرەوە بۆ خاوەن کار بنێریت بۆ تەلەگرام.' 
-                  : 'Are you sure you want to log out from this active user terminal session? You are required to send the logout alert to Telegram first.'}
+                  ? 'ئایا دڵنیایت لە چوونەدەرەوە لەم جۆراوەی کار؟' 
+                  : 'Are you sure you want to log out from this user terminal session?'}
               </p>
-
-              {/* Telegram Gatekeeper Step */}
-              <div className="bg-natural-bg border border-natural-border rounded-2xl p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-natural-text-secondary uppercase tracking-wider">
-                    {isRtl ? 'مەرجی تەلەگرام' : 'Required Step'}
-                  </span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${reportSentSuccessfully ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700 animate-pulse'}`}>
-                    {reportSentSuccessfully ? (isRtl ? 'مەرجەکە جێبەجێبوو' : 'Completed') : (isRtl ? 'ماوە' : 'Pending')}
-                  </span>
-                </div>
-
-                <button
-                  onClick={() => sendTelegramReport('logout')}
-                  disabled={isSendingReport}
-                  className={`w-full py-3 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
-                    reportSentSuccessfully 
-                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
-                      : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm'
-                  }`}
-                >
-                  {isSendingReport ? (
-                    <span>{isRtl ? 'دەنێردرێت...' : 'Sending Report...'}</span>
-                  ) : reportSentSuccessfully ? (
-                    <>✅ {isRtl ? 'ڕاپۆرتی لۆگ ئاوت نێردرا!' : 'Logout Alert Transmitted!'}</>
-                  ) : (
-                    <>{isRtl ? 'ناردنی ئاگاداری لۆگ ئاوت بۆ تەلەگرام' : 'Send Logout Alert to Telegram'}</>
-                  )}
-                </button>
-
-                {telegramError && (
-                  <div className="text-[11px] text-rose-600 font-medium leading-normal bg-rose-50 border border-rose-100 p-2 rounded-lg">
-                    ⚠️ {telegramError}
-                  </div>
-                )}
-              </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-natural-border">
                 <button 
@@ -668,17 +584,11 @@ export const Dashboard: React.FC = () => {
                   {t('cancel')}
                 </button>
                 <button 
-                  disabled={!reportSentSuccessfully}
                   onClick={() => {
                     logout();
                     setIsLogoutModalOpen(false);
                   }}
-                  className={`px-6 py-3 rounded-xl font-bold text-sm transition-all shadow-md active:scale-95 flex items-center gap-1.5 ${
-                    reportSentSuccessfully 
-                      ? 'bg-red-600 hover:bg-red-700 text-white cursor-pointer' 
-                      : 'bg-natural-bg text-natural-text-tertiary border border-natural-border cursor-not-allowed opacity-60'
-                  }`}
-                  title={!reportSentSuccessfully ? "Please send Telegram report first" : undefined}
+                  className="px-6 py-3 rounded-xl font-bold text-sm bg-red-600 hover:bg-red-700 text-white transition-all shadow-md active:scale-95 flex items-center gap-1.5 cursor-pointer"
                 >
                   {isRtl ? 'چوونەدەرەوە' : 'Log Out'}
                 </button>
