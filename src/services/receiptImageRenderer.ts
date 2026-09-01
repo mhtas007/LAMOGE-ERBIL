@@ -1,5 +1,4 @@
 ﻿import { FormattedReceiptData } from './receiptFormatter';
-import { DEFAULT_LOGO_BASE64 } from './defaultLogo';
 
 export interface RasterReceiptResult {
   rasterData: string;
@@ -24,7 +23,6 @@ export class ReceiptImageRenderer {
     const leftX = is58mm ? 10 : 16;
     const rightX = is58mm ? 374 : 560;
     const centerX = width / 2;
-    const usableWidth = rightX - leftX;
 
     const tr = {
       en: {
@@ -110,7 +108,7 @@ export class ReceiptImageRenderer {
 
     // 1. Calculate dynamic height
     let estimatedHeight = is58mm ? 400 : 480;
-    if (logoUrl || DEFAULT_LOGO_BASE64) estimatedHeight += is58mm ? 120 : 160;
+    estimatedHeight += is58mm ? 120 : 160;
     if (data.address) estimatedHeight += 32;
     data.order.items.forEach((it) => {
       estimatedHeight += is58mm ? 36 : 44;
@@ -139,7 +137,7 @@ export class ReceiptImageRenderer {
     let y = is58mm ? 12 : 18;
 
     // --- 1. DRAW LOGO ---
-    const logoSource = logoUrl || data.logo || DEFAULT_LOGO_BASE64;
+    const logoSource = logoUrl || data.logo || '/lamoge_logo.png';
     if (logoSource) {
       try {
         const logoImg = new Image();
@@ -253,7 +251,6 @@ export class ReceiptImageRenderer {
     y += 6;
 
     const qtyWidth = is58mm ? 40 : 50;
-    const priceWidth = is58mm ? 100 : 130;
 
     const qtyX = isRtl ? rightX : leftX;
     const itemX = isRtl ? rightX - qtyWidth - 10 : leftX + qtyWidth + 10;
