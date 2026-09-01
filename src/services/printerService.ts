@@ -5,6 +5,7 @@
  */
 import { printerConfigService, PrinterConfig } from './printerConfigService';
 import { ReceiptFormatter, FormattedReceiptData } from './receiptFormatter';
+import { Capacitor, CapacitorHttp } from '@capacitor/core';
 
 export interface PrintResult {
   success: boolean;
@@ -159,6 +160,26 @@ export class PrinterService {
     const targetPort = port || 80;
     const endpoint = `http://${ip}:${targetPort}/cgi-bin/epos/service.cgi?devid=local_printer&timeout=5000`;
 
+    if (Capacitor.isNativePlatform()) {
+      // Native iOS / Android HTTP (bypasses browser HTTPS/CORS restrictions completely!)
+      const capResponse = await CapacitorHttp.post({
+        url: endpoint,
+        headers: {
+          'Content-Type': 'text/xml; charset=utf-8',
+          'If-Modified-Since': 'Thu, 01 Jan 1970 00:00:00 GMT',
+          SOAPAction: '""',
+        },
+        data: xmlPayload,
+        connectTimeout: 4000,
+        readTimeout: 4000,
+      });
+
+      if (capResponse.status !== 200) {
+        throw new Error(`Epson ePOS printer error (Status: ${capResponse.status})`);
+      }
+      return;
+    }
+
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
@@ -188,6 +209,23 @@ export class PrinterService {
     const xmlPayload = ReceiptFormatter.buildStarWebPrntXml(data, paperWidth);
     const targetPort = port || 80;
     const endpoint = `http://${ip}:${targetPort}/StarWebPRNT/SendMessage`;
+
+    if (Capacitor.isNativePlatform()) {
+      const capResponse = await CapacitorHttp.post({
+        url: endpoint,
+        headers: {
+          'Content-Type': 'text/xml; charset=utf-8',
+        },
+        data: xmlPayload,
+        connectTimeout: 4000,
+        readTimeout: 4000,
+      });
+
+      if (capResponse.status !== 200) {
+        throw new Error(`Star WebPRNT printer error (Status: ${capResponse.status})`);
+      }
+      return;
+    }
 
     const response = await fetch(endpoint, {
       method: 'POST',
