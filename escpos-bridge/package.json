@@ -1,0 +1,13 @@
+{
+  "name": "pos-escpos-bridge",
+  "version": "1.0.0",
+  "description": "Local micro-bridge for raw TCP socket (port 9100) thermal printers to enable iPad PWA silent printing",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  }
+}

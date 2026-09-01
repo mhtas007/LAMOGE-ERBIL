@@ -1,0 +1,155 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Tajawal:wght@400;500;700;800&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-color: #fbfaf7;
+    --surface-color: #ffffff;
+    --text-color: #2e2a25;
+    --text-secondary: #5c554c;
+    --text-tertiary: #9c9284;
+    --accent-color: #a68668;
+    --border-color: #eaddcf;
+    --border-light: #f5f0e9;
+    
+    --dark-color: #1c1917;
+    --dark-surface: #292524;
+    --dark-text: #ffffff;
+    --dark-text-secondary: #d6d3d1;
+  }
+
+  .dark {
+    --bg-color: #0a0a0a;
+    --surface-color: #141414;
+    --text-color: #fafafa;
+    --text-secondary: #a3a3a3;
+    --text-tertiary: #737373;
+    --accent-color: #a68668;
+    --border-color: #262626;
+    --border-light: #171717;
+    
+    --dark-color: #a68668;
+    --dark-surface: #262626;
+    --dark-text: #ffffff;
+    --dark-text-secondary: #e5e5e5;
+  }
+}
+
+@theme {
+  --color-natural-bg: var(--bg-color);
+  --color-natural-surface: var(--surface-color);
+  --color-natural-text: var(--text-color);
+  --color-natural-text-secondary: var(--text-secondary);
+  --color-natural-text-tertiary: var(--text-tertiary);
+  --color-natural-accent: var(--accent-color);
+  --color-natural-border: var(--border-color);
+  --color-natural-border-light: var(--border-light);
+  
+  --color-natural-dark: var(--dark-color);
+  --color-natural-dark-surface: var(--dark-surface);
+  --color-natural-dark-text: var(--dark-text);
+  --color-natural-dark-text-secondary: var(--dark-text-secondary);
+
+  --font-sans: "Inter", "Noto Sans Arabic", "Tajawal", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-natural-bg);
+    color: var(--color-natural-text);
+  }
+  html[dir="rtl"] {
+    font-family: "Noto Sans Arabic", "Tajawal", "Inter", sans-serif;
+  }
+}
+
+
+@layer utilities {
+  *::-webkit-scrollbar {
+    display: none;
+  }
+  * {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+@media print {
+  @page {
+    margin: 0;
+    size: auto;
+  }
+
+  /* Reset body and html for WebKit / iOS Safari printing */
+  html, body {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Force all parent wrappers to release height constraints so Safari does not clip the page */
+  #root,
+  #root > *,
+  main,
+  .flex-1,
+  [class*="h-\[100dvh\]"],
+  [class*="overflow-hidden"],
+  [class*="overflow-y-auto"] {
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    position: static !important;
+    transform: none !important;
+  }
+
+  /* Hide screen-only elements */
+  .no-print,
+  .print\:hidden,
+  header,
+  nav,
+  aside,
+  button,
+  .backdrop-blur-sm {
+    display: none !important;
+  }
+
+  /* Thermal receipt styling in print mode */
+  .receipt-printable-root {
+    display: block !important;
+    visibility: visible !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 2mm 1mm !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    z-index: 999999 !important;
+  }
+
+  .receipt-paper {
+    background: #ffffff !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 auto !important;
+  }
+}
+

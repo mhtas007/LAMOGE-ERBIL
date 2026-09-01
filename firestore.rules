@@ -1,0 +1,107 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Function to get user data
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    // Function to check roles
+    function isSuperAdmin() {
+      return isAuthenticated() && getUserData().role == 'super_admin';
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && (getUserData().role == 'admin' || getUserData().role == 'super_admin');
+    }
+    
+    function isCashier() {
+      return isAuthenticated() && (getUserData().role == 'cashier' || getUserData().role == 'admin' || getUserData().role == 'super_admin');
+    }
+    
+    function isWaiter() {
+      return isAuthenticated() && (getUserData().role == 'waiter' || getUserData().role == 'cashier' || getUserData().role == 'admin' || getUserData().role == 'super_admin');
+    }
+    
+    // Function to check specific permission
+    function hasPermission(permission) {
+      return isSuperAdmin() || (isAuthenticated() && permission in getUserData().permissions);
+    }
+    
+    // Default rule: allow read for all authenticated users because the client fetches everything
+    // We restrict write by default
+    match /{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow write: if isSuperAdmin() || request.auth.uid == userId;
+    }
+
+    // Menu and Categories
+    match /menuItems/{itemId} {
+      allow write: if isSuperAdmin() || hasPermission('menu');
+    }
+
+    match /categories/{categoryId} {
+      allow write: if isSuperAdmin() || hasPermission('menu');
+    }
+
+    // Tables Management
+    match /tables/{tableId} {
+      // Manage tables requires tables_manage permission
+      allow create, delete: if isSuperAdmin() || hasPermission('tables_manage');
+      // Update tables (e.g. status) can be done if they have tables_manage or are cashiers updating status
+      allow update: if isSuperAdmin() || hasPermission('tables_manage') || isWaiter();
+    }
+
+    // Table Orders (Active orders on tables)
+    match /tableOrders/{tableId} {
+      // Any waiter/cashier can create/update/delete active table orders
+      allow write: if isWaiter();
+    }
+
+    // Orders History
+    match /orders/{orderId} {
+      allow create: if isWaiter();
+      allow update, delete: if isAdmin() || hasPermission('orders_manage');
+    }
+
+    // Expenses
+    match /expenses/{expenseId} {
+      allow write: if isAdmin() || hasPermission('expenses');
+    }
+
+    // Shifts
+    match /shifts/{shiftId} {
+      allow write: if isAuthenticated();
+    }
+
+    // Expense Categories
+    match /expenseCategories/{categoryId} {
+      allow write: if isAdmin() || hasPermission('expenses');
+    }
+
+    // Inventory
+    match /inventory/{itemId} {
+      allow write: if isAdmin() || hasPermission('inventory');
+    }
+
+    match /inventoryLogs/{logId} {
+      allow write: if isAdmin() || hasPermission('inventory');
+    }
+
+    // Settings
+    match /settings/{settingId} {
+      allow write: if isAdmin() || hasPermission('settings');
+    }
+  }
+}
