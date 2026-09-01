@@ -608,12 +608,12 @@ export const Settings: React.FC = () => {
                         type="button"
                         onClick={() => {
                           updateReceiptSettings(formData);
-                          setTimeout(() => window.print(), 100);
+                          window.print();
                         }}
                         className="bg-natural-bg border border-natural-border hover:bg-natural-border/80 text-natural-text px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 flex items-center gap-2"
                       >
                         <Printer size={14} />
-                        <span>{isRtl ? 'پرینتی وێبگەڕ' : 'Browser Print'}</span>
+                        <span>{isRtl ? 'چاپی ئایپاد (AirPrint / تێست)' : 'AirPrint / Test'}</span>
                       </button>
                       <button
                         type="button"

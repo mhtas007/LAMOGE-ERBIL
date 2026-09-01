@@ -80,10 +80,15 @@ export class PrinterService {
 
       console.warn(`[PrinterService] ❌ Print failure to ${targetIp}:`, error);
 
-      // Distinguish common LAN / CORS / Network errors
-      if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+      // Distinguish common LAN / CORS / iOS HTTPS Mixed Content errors
+      if (
+        error.message?.includes('Failed to fetch') || 
+        error.message?.includes('NetworkError') ||
+        error.message?.includes('Load failed') ||
+        error.message?.includes('mixed content')
+      ) {
         throw new Error(
-          `Unable to reach printer at ${targetIp}:${port}. Ensure iPad is connected to the same Wi-Fi and "Local Network" access is granted in iOS Safari settings.`
+          `لەبەر پاراستنی ئەپڵ (iOS Safari Security / HTTPS)، ڕێگە بە چاپی ڕاستەوخۆی HTTP نادرێت. تکایە خانەی ئایپی بە بەتاڵی جێبهێڵە تاوەکو پەنجەرەی چاپی ئایپاد (AirPrint) بەکاربهێنیت بێ هەڵە.`
         );
       }
 
