@@ -46,13 +46,25 @@ export class PrinterService {
       if (config.protocol === 'star_webprnt') {
         await this.sendToStarWebPrnt(targetIp, port, data, config.paperWidth, controller.signal);
       } else if (config.protocol === 'raw_escpos_bridge') {
-        await this.sendToLocalProxy(targetIp, port, data, controller.signal);
-      } else {
-        // Default: Direct Epson ePOS-Print XML (Port 80/8008)
-        await this.sendToEpsonEpos(targetIp, port, data, config.paperWidth, {
+        await this.sendToLocalProxy(targetIp, port, data, {
           autoCut: config.autoCut,
           openCashDrawer: config.openCashDrawer,
         }, controller.signal);
+      } else {
+        // Default: Direct Epson ePOS-Print XML (Port 80/8008)
+        try {
+          await this.sendToEpsonEpos(targetIp, port, data, config.paperWidth, {
+            autoCut: config.autoCut,
+            openCashDrawer: config.openCashDrawer,
+          }, controller.signal);
+        } catch (eposErr) {
+          console.warn('[PrinterService] Epson ePOS HTTP failed, attempting direct TCP Bridge via /api/print:', eposErr);
+          // Fallback to internal /api/print raw socket bridge
+          await this.sendToLocalProxy(targetIp, 9100, data, {
+            autoCut: config.autoCut,
+            openCashDrawer: config.openCashDrawer,
+          }, controller.signal);
+        }
       }
 
       clearTimeout(timeoutId);
@@ -242,34 +254,44 @@ export class PrinterService {
   }
 
   /**
-   * Sends payload to a local Node.js proxy for generic raw socket printers (Port 9100)
+   * Sends payload to local raw TCP socket print bridge (Port 9100)
    */
   private static async sendToLocalProxy(
     ip: string,
     port: number,
     data: FormattedReceiptData,
+    options: { autoCut?: boolean; openCashDrawer?: boolean },
     signal: AbortSignal
   ): Promise<void> {
-    const targetPort = port || 3001;
-    const proxyUrl = `http://${ip}:${targetPort}/api/print`;
     const plainText = ReceiptFormatter.buildPlainText(data);
+    const endpoints = ['/api/print', `http://${window.location.hostname}:3001/api/print`];
 
-    const response = await fetch(proxyUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        ...data,
-        plainText,
-        printerIp: ip,
-      }),
-      signal,
-    });
+    let lastError: any = null;
+    for (const url of endpoints) {
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ...data,
+            plainText,
+            printerIp: ip,
+            autoCut: options.autoCut,
+            openCashDrawer: options.openCashDrawer,
+          }),
+          signal,
+        });
 
-    if (!response.ok) {
-      const errText = await response.text().catch(() => '');
-      throw new Error(`Local Print Bridge error (${response.status}): ${errText || 'Connection refused'}`);
+        if (response.ok) {
+          return;
+        }
+      } catch (err) {
+        lastError = err;
+      }
     }
+
+    throw lastError || new Error(`Could not connect to print bridge on port 9100`);
   }
 }
