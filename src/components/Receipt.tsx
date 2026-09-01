@@ -208,9 +208,21 @@ export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride }) => 
                   {itemTotal.toLocaleString()}
                 </div>
               </div>
-              {addonsText && (
-                <div className="text-[10px] text-black/75 pl-2 italic mt-0.5">
-                  ↳ {addonsText}
+              {item.selectedAddons && item.selectedAddons.length > 0 && (
+                <div className="text-[10px] text-black/80 pl-2 mt-0.5 space-y-0.5">
+                  {item.selectedAddons.map((addon, aIdx) => {
+                    const addonName = rLang === 'ku' ? addon.nameKu : rLang === 'ar' ? addon.nameAr : addon.nameEn;
+                    return (
+                      <div key={aIdx} className="flex justify-between items-center italic">
+                        <span>↳ + {addonName}</span>
+                        {addon.price > 0 && (
+                          <span className="font-mono not-italic text-[9px] font-bold text-black/90">
+                            (+{addon.price.toLocaleString()} {receiptSettings.currency})
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

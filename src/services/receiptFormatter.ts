@@ -48,8 +48,11 @@ export class ReceiptFormatter {
       itemsXml += `      <text>${this.escapeXml(line)}&#10;</text>\n`;
 
       if (item.selectedAddons && item.selectedAddons.length > 0) {
-        const addonNames = item.selectedAddons.map(a => a.nameEn || a.nameKu || a.nameAr).join(', ');
-        itemsXml += `      <text>  + ${this.escapeXml(addonNames)}&#10;</text>\n`;
+        item.selectedAddons.forEach((addon) => {
+          const addonName = addon.nameEn || addon.nameKu || addon.nameAr || 'Addon';
+          const addonPriceStr = addon.price > 0 ? ` (+${addon.price.toLocaleString()} ${curr})` : '';
+          itemsXml += `      <text>  + ${this.escapeXml(addonName + addonPriceStr)}&#10;</text>\n`;
+        });
       }
       if (item.notes) {
         itemsXml += `      <text>  * Note: ${this.escapeXml(item.notes)}&#10;</text>\n`;
@@ -176,11 +179,14 @@ ${itemsXml}      <text align="center">${divider}&#10;</text>
       text += truncatedName + qtyStr.padStart(4) + priceStr.padStart(10) + '\n';
 
       if (item.selectedAddons && item.selectedAddons.length > 0) {
-        const addonNames = item.selectedAddons.map(a => a.nameEn || a.nameKu || a.nameAr).join(', ');
-        text += `  + ${addonNames.slice(0, charsPerLine - 5)}\n`;
+        item.selectedAddons.forEach((addon) => {
+          const addonName = addon.nameEn || addon.nameKu || addon.nameAr || 'Addon';
+          const addonPriceStr = addon.price > 0 ? ` (+${addon.price.toLocaleString()} ${curr})` : '';
+          text += `  + ${addonName}${addonPriceStr}\n`;
+        });
       }
       if (item.notes) {
-        text += `  * ${item.notes.slice(0, charsPerLine - 5)}\n`;
+        text += `  * Note: ${item.notes.slice(0, charsPerLine - 10)}\n`;
       }
     });
 
@@ -200,9 +206,10 @@ ${itemsXml}      <text align="center">${divider}&#10;</text>
 
     // Footer
     if (data.footerText) {
-      text += `${this.centerText(data.footerText, charsPerLine)}\n`;
+      const cleanFooter = data.footerText.replace(/^[!؟?\s]+|[!؟?\s]+$/g, '');
+      text += `${this.centerText(cleanFooter, charsPerLine)}\n`;
     }
-    text += `${this.centerText('★ ★ ★ ★ ★', charsPerLine)}\n`;
+    text += `${this.centerText('* * * * *', charsPerLine)}\n`;
     text += `${this.centerText('POWERED BY MAS POS', charsPerLine)}\n\n\n\n`;
 
     return text;

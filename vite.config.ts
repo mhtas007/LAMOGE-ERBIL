@@ -24,8 +24,8 @@ function thermalPrinterMiddleware() {
               client.setTimeout(4000);
               
               client.connect(targetPort, targetIp, () => {
-                // Initialize printer
-                client.write(Buffer.from([0x1b, 0x40]));
+                // Initialize printer & default codepage
+                client.write(Buffer.from([0x1b, 0x40, 0x1b, 0x74, 0x00]));
                 
                 // Open cash drawer if requested
                 if (openCashDrawer) {
@@ -33,13 +33,20 @@ function thermalPrinterMiddleware() {
                 }
                 
                 if (plainText) {
-                  client.write(Buffer.from(plainText + '\n\n\n', 'utf8'));
+                  // Send clean formatted receipt
+                  client.write(Buffer.from(plainText + '\n\n', 'utf8'));
                 } else if (order) {
-                  client.write(Buffer.from([0x1b, 0x61, 0x01])); // center
-                  client.write(Buffer.from(`${cafeName || 'MAS CAFE'}\n\n`, 'utf8'));
+                  client.write(Buffer.from([0x1b, 0x61, 0x01, 0x1b, 0x21, 0x30])); // center & large bold
+                  client.write(Buffer.from(`${cafeName || 'MAS CAFE'}\n`, 'utf8'));
+                  client.write(Buffer.from([0x1b, 0x21, 0x00])); // normal size
+                  client.write(Buffer.from(`========================================\n`));
                   client.write(Buffer.from([0x1b, 0x61, 0x00])); // left
-                  client.write(Buffer.from(`Order #${order.invoiceCode || order.id}\n`, 'utf8'));
-                  client.write(Buffer.from(`Total: ${order.total || 0} IQD\n\n\n`, 'utf8'));
+                  client.write(Buffer.from(`Order #: ${order.invoiceCode || order.id}\n`));
+                  client.write(Buffer.from(`========================================\n`));
+                  client.write(Buffer.from([0x1b, 0x21, 0x10])); // double height
+                  client.write(Buffer.from(`TOTAL: ${order.total || 0} IQD\n`));
+                  client.write(Buffer.from([0x1b, 0x21, 0x00])); // normal
+                  client.write(Buffer.from(`========================================\n\n\n`));
                 }
                 
                 // Auto cut
