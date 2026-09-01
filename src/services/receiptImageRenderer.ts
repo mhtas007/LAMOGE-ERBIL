@@ -17,55 +17,257 @@ export class ReceiptImageRenderer {
     const is58mm = paperWidth === '58mm';
     const targetWidth = is58mm ? 384 : 576; // standard thermal print width (dots)
     const bytesWidth = Math.ceil(targetWidth / 8);
+    const lang = data.receiptLanguage || 'en';
+    const isRtl = lang === 'ku' || lang === 'ar';
+    const curr = data.currencySymbol || 'IQD';
 
-    // 1. Check if #receipt-print-root or .receipt-paper is already in DOM
-    const sourceElement = document.getElementById('receipt-print-root') || document.querySelector('.receipt-paper');
-    let tempContainer: HTMLElement | null = null;
-    let canvas: HTMLCanvasElement | null = null;
+    const tr = {
+      en: {
+        printedAt: 'Printed At:',
+        orderNo: 'Check#',
+        type: 'Type:',
+        table: 'Table:',
+        item: 'Item',
+        qty: 'Qty',
+        price: 'Price',
+        subtotal: 'Subtotal',
+        discount: 'Discount',
+        serviceCharge: 'Service',
+        total: 'TOTAL',
+        payment: 'Payment - Cash',
+        productsCount: 'Products Count',
+        dineIn: 'Dine In',
+        takeaway: 'Takeaway',
+        delivery: 'Delivery',
+        thanks: 'Thank you for your visit!',
+        pleasure: 'The Pleasure of Taste',
+      },
+      ku: {
+        printedAt: 'کاتی چاپکردن:',
+        orderNo: 'ژمارەی وەسڵ#',
+        type: 'جۆر:',
+        table: 'مێز:',
+        item: 'بابەت',
+        qty: 'دانە',
+        price: 'نرخ',
+        subtotal: 'کۆی گشتی',
+        discount: 'داشکاندن',
+        serviceCharge: 'خزمەتگوزاری',
+        total: 'کۆی کۆتایی',
+        payment: 'شێوازی پارەدان - نەختینە',
+        productsCount: 'ژمارەی بابەتەکان',
+        dineIn: 'Dine In',
+        takeaway: 'Takeaway',
+        delivery: 'Delivery',
+        thanks: 'سەردانەکەت جێگەی دڵخۆشیمانە',
+        pleasure: 'چێژی تایبەتی تامی خۆش',
+      },
+      ar: {
+        printedAt: 'وقت الطباعة:',
+        orderNo: 'رقم الفاتورة#',
+        type: 'النوع:',
+        table: 'الطاولة:',
+        item: 'الصنف',
+        qty: 'الكمية',
+        price: 'السعر',
+        subtotal: 'المجموع الفرعي',
+        discount: 'الخصم',
+        serviceCharge: 'رسوم الخدمة',
+        total: 'الإجمالي',
+        payment: 'طريقة الدفع - نقدي',
+        productsCount: 'عدد الأصناف',
+        dineIn: 'Dine In',
+        takeaway: 'Takeaway',
+        delivery: 'Delivery',
+        thanks: 'شكراً لزيارتكم',
+        pleasure: 'متعة المذاق الرفيع',
+      },
+    }[lang] || {
+      printedAt: 'Printed At:',
+      orderNo: 'Check#',
+      type: 'Type:',
+      table: 'Table:',
+      item: 'Item',
+      qty: 'Qty',
+      price: 'Price',
+      subtotal: 'Subtotal',
+      discount: 'Discount',
+      serviceCharge: 'Service',
+      total: 'TOTAL',
+      payment: 'Payment - Cash',
+      productsCount: 'Products Count',
+      dineIn: 'Dine In',
+      takeaway: 'Takeaway',
+      delivery: 'Delivery',
+      thanks: 'Thank you for your visit!',
+      pleasure: 'The Pleasure of Taste',
+    };
 
-    if (sourceElement) {
-      // Clone element into off-screen visible wrapper to capture perfectly with CSS styles
-      tempContainer = document.createElement('div');
-      tempContainer.style.position = 'fixed';
-      tempContainer.style.left = '-9999px';
-      tempContainer.style.top = '0';
-      tempContainer.style.width = is58mm ? '280px' : '380px';
-      tempContainer.style.background = '#ffffff';
-      tempContainer.style.color = '#000000';
-      tempContainer.style.zIndex = '-99999';
-      tempContainer.style.display = 'block';
-      tempContainer.style.visibility = 'visible';
+    const dateObj = new Date(data.order.createdAt);
+    const y = dateObj.getFullYear();
+    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const d = String(dateObj.getDate()).padStart(2, '0');
+    let h = dateObj.getHours();
+    const min = String(dateObj.getMinutes()).padStart(2, '0');
+    const sec = String(dateObj.getSeconds()).padStart(2, '0');
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    const formattedDateTime = `${y}/${m}/${d} ${String(h).padStart(2, '0')}:${min}:${sec} ${ampm}`;
 
-      const clone = sourceElement.cloneNode(true) as HTMLElement;
-      clone.style.display = 'block';
-      clone.style.visibility = 'visible';
-      clone.style.boxShadow = 'none';
-      clone.style.margin = '0 auto';
-      clone.style.background = '#ffffff';
-      clone.style.color = '#000000';
-      tempContainer.appendChild(clone);
-      document.body.appendChild(tempContainer);
+    const totalItemCount = data.order.items.reduce((sum, it) => sum + it.quantity, 0);
 
-      try {
-        canvas = await html2canvas(clone, {
-          scale: 2,
-          backgroundColor: '#ffffff',
-          logging: false,
-          useCORS: true,
-          allowTaint: true,
-        });
-      } catch (domErr) {
-        console.warn('[ReceiptImageRenderer] html2canvas DOM capture fallback:', domErr);
-      } finally {
-        if (tempContainer && tempContainer.parentNode) {
-          tempContainer.parentNode.removeChild(tempContainer);
-        }
-      }
+    const orderTypeLabel = data.order.type === 'dine_in' ? tr.dineIn : data.order.type === 'takeaway' ? tr.takeaway : tr.delivery;
+    const tableLabel = data.tableName || (data.order.tableId ? `${tr.table} ${data.order.tableId}` : '');
+
+    // Build self-contained HTML container with explicit inline CSS styles for 100% reliable rendering
+    const container = document.createElement('div');
+    container.style.position = 'fixed';
+    container.style.left = '-9999px';
+    container.style.top = '0';
+    container.style.width = is58mm ? '360px' : '480px';
+    container.style.backgroundColor = '#ffffff';
+    container.style.color = '#000000';
+    container.style.padding = '16px';
+    container.style.fontFamily = isRtl
+      ? "'Segoe UI', Tahoma, Arial, 'Noto Sans Arabic', sans-serif"
+      : "'Segoe UI', Arial, -apple-system, sans-serif";
+    container.style.fontSize = is58mm ? '13px' : '15px';
+    container.style.lineHeight = '1.45';
+    container.style.direction = isRtl ? 'rtl' : 'ltr';
+    container.style.boxSizing = 'border-box';
+    container.style.zIndex = '-99999';
+
+    // 1. Logo
+    let logoHtml = '';
+    if (logoUrl) {
+      logoHtml = `<div style="text-align: center; margin-bottom: 8px;">
+        <img src="${logoUrl}" style="max-height: ${is58mm ? '70px' : '90px'}; max-width: 160px; object-fit: contain; filter: grayscale(100%) contrast(140%);" />
+      </div>`;
     }
 
-    // Fallback: If DOM capture wasn't available, generate canvas directly
-    if (!canvas) {
-      canvas = await this.renderCanvasFallback(data, is58mm, logoUrl);
+    // 2. Cafe Info
+    const cafeNameHtml = `<div style="text-align: center; margin-bottom: 8px;">
+      <div style="font-size: ${is58mm ? '17px' : '20px'}; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">
+        ${data.cafeName || 'LAMOGE CAFE'}
+      </div>
+      <div style="font-size: ${is58mm ? '12px' : '13px'}; color: #222; margin-top: 2px;">
+        ${data.headerText || `Welcome to ${data.cafeName || 'Lamoge'}`}
+      </div>
+      ${data.address ? `<div style="font-size: ${is58mm ? '11px' : '12px'}; color: #333; margin-top: 2px;">${data.address}</div>` : ''}
+      ${data.phone ? `<div style="font-size: ${is58mm ? '11px' : '12px'}; color: #333; margin-top: 2px;">Tel: ${data.phone}</div>` : ''}
+    </div>`;
+
+    // 3. Meta lines
+    const metaHtml = `<div style="margin-bottom: 8px; font-size: ${is58mm ? '12px' : '13px'};">
+      <div style="text-align: center; font-size: ${is58mm ? '11px' : '12px'}; color: #333; margin-bottom: 4px;">
+        ${tr.printedAt} ${formattedDateTime}
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-weight: 600;">${orderTypeLabel} ${tableLabel ? `(${tableLabel})` : ''}</span>
+        <span style="font-weight: 700;">${tr.orderNo} ${data.order.invoiceCode || data.order.id.slice(0, 8).toUpperCase()}</span>
+      </div>
+    </div>`;
+
+    // 4. Items Table
+    const tableHeaderHtml = `<div style="border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 4px 0; margin: 6px 0; display: flex; justify-content: space-between; font-weight: 700; font-size: ${is58mm ? '12px' : '13px'};">
+      <span style="width: 40px; text-align: ${isRtl ? 'right' : 'left'};">${tr.qty}</span>
+      <span style="flex: 1; padding: 0 6px;">${tr.item}</span>
+      <span style="width: 90px; text-align: ${isRtl ? 'left' : 'right'};">${tr.price}</span>
+    </div>`;
+
+    let itemsRowsHtml = '<div style="margin-bottom: 8px;">';
+    data.order.items.forEach((item) => {
+      const menuItem = data.menuItems.find((m) => m.id === item.menuItemId);
+      let itemName = 'Item';
+      if (menuItem) {
+        if (lang === 'ku' && menuItem.nameKu) itemName = menuItem.nameKu;
+        else if (lang === 'ar' && menuItem.nameAr) itemName = menuItem.nameAr;
+        else itemName = menuItem.nameEn || menuItem.nameKu || menuItem.nameAr || 'Item';
+      }
+      const itemTotal = item.price * item.quantity;
+
+      itemsRowsHtml += `<div style="margin: 4px 0; font-size: ${is58mm ? '12px' : '13.5px'};">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+          <span style="width: 40px; font-weight: 600; text-align: ${isRtl ? 'right' : 'left'};">${item.quantity}</span>
+          <span style="flex: 1; padding: 0 6px; font-weight: 600;">
+            ${itemName}
+            ${item.variantName ? `<span style="display: block; font-size: ${is58mm ? '11px' : '12px'}; color: #444; font-weight: 400;">(${item.variantName})</span>` : ''}
+          </span>
+          <span style="width: 90px; text-align: ${isRtl ? 'left' : 'right'}; font-weight: 600;">${curr} ${itemTotal.toLocaleString()}</span>
+        </div>`;
+
+      if (item.selectedAddons && item.selectedAddons.length > 0) {
+        item.selectedAddons.forEach((addon) => {
+          const aName = lang === 'ku' ? (addon.nameKu || addon.nameEn) : lang === 'ar' ? (addon.nameAr || addon.nameEn) : (addon.nameEn || 'Addon');
+          itemsRowsHtml += `<div style="font-size: ${is58mm ? '10.5px' : '11.5px'}; color: #333; padding-${isRtl ? 'right' : 'left'}: 40px; margin-top: 1px;">
+            ↳ + ${aName} ${addon.price > 0 ? `(+${curr} ${(addon.price * item.quantity).toLocaleString()})` : ''}
+          </div>`;
+        });
+      }
+
+      if (item.notes) {
+        itemsRowsHtml += `<div style="font-size: ${is58mm ? '10px' : '11px'}; color: #555; font-style: italic; padding-${isRtl ? 'right' : 'left'}: 40px;">* Note: ${item.notes}</div>`;
+      }
+
+      itemsRowsHtml += '</div>';
+    });
+    itemsRowsHtml += '</div>';
+
+    // 5. Totals Summary
+    const totalsHtml = `<div style="border-top: 1px dashed #000; padding-top: 6px; margin-top: 6px; font-size: ${is58mm ? '12px' : '13.5px'};">
+      <div style="display: flex; justify-content: space-between; margin: 3px 0;">
+        <span>${tr.subtotal}:</span>
+        <span>${curr} ${data.order.subtotal.toLocaleString()}</span>
+      </div>
+      ${data.order.discount > 0 ? `<div style="display: flex; justify-content: space-between; margin: 3px 0;">
+        <span>${tr.discount}:</span>
+        <span>-${curr} ${data.order.discount.toLocaleString()}</span>
+      </div>` : ''}
+      ${data.order.serviceCharge && data.order.serviceCharge > 0 ? `<div style="display: flex; justify-content: space-between; margin: 3px 0;">
+        <span>${tr.serviceCharge}:</span>
+        <span>+${curr} ${data.order.serviceCharge.toLocaleString()}</span>
+      </div>` : ''}
+
+      <div style="border-top: 2px solid #000; margin: 6px 0;"></div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; font-size: ${is58mm ? '16px' : '18px'}; font-weight: 900; padding: 2px 0;">
+        <span style="font-weight: 900; text-transform: uppercase;">${tr.total}:</span>
+        <span style="font-weight: 900;">${curr} ${data.order.total.toLocaleString()}</span>
+      </div>
+
+      <div style="border-top: 2px solid #000; margin: 6px 0;"></div>
+
+      <div style="display: flex; justify-content: space-between; font-size: ${is58mm ? '11.5px' : '12.5px'}; margin: 3px 0;">
+        <span>${data.order.paymentMethod === 'card' ? (isRtl ? 'شێوازی پارەدان - کارت' : 'Payment - Card') : tr.payment}</span>
+        <span>${curr} ${data.order.total.toLocaleString()}</span>
+      </div>
+    </div>`;
+
+    // 6. Footer
+    const footerHtml = `<div style="border-top: 1px solid #000; padding-top: 8px; margin-top: 8px; text-align: center; font-size: ${is58mm ? '11px' : '12px'};">
+      <div style="margin-bottom: 3px; font-weight: 600;">${tr.productsCount}: ${totalItemCount}</div>
+      <div style="margin-bottom: 4px;">${data.footerText || tr.thanks}</div>
+      <div style="font-size: ${is58mm ? '9px' : '10px'}; letter-spacing: 2px; text-transform: uppercase; font-weight: 700; color: #444; margin-top: 6px;">
+        POWERED BY MAS MENU
+      </div>
+    </div>`;
+
+    container.innerHTML = logoHtml + cafeNameHtml + metaHtml + tableHeaderHtml + itemsRowsHtml + totalsHtml + footerHtml;
+    document.body.appendChild(container);
+
+    let canvas: HTMLCanvasElement;
+    try {
+      canvas = await html2canvas(container, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        logging: false,
+        useCORS: true,
+        allowTaint: true,
+      });
+    } finally {
+      if (container.parentNode) {
+        container.parentNode.removeChild(container);
+      }
     }
 
     // Scale canvas to exact thermal target width (576 or 384 dots)
@@ -118,298 +320,5 @@ export class ReceiptImageRenderer {
       height: finalHeight,
       bytesWidth,
     };
-  }
-
-  private static async renderCanvasFallback(
-    data: FormattedReceiptData,
-    is58mm: boolean,
-    logoUrl?: string
-  ): Promise<HTMLCanvasElement> {
-    const width = is58mm ? 384 : 576;
-    const lang = data.receiptLanguage || 'en';
-    const isRtl = lang === 'ku' || lang === 'ar';
-    const curr = data.currencySymbol || 'IQD';
-
-    const tr = {
-      en: {
-        date: 'Date:',
-        orderNo: 'Order No:',
-        type: 'Type:',
-        table: 'Table:',
-        item: 'Item',
-        qty: 'Qty',
-        price: 'Price',
-        subtotal: 'Subtotal:',
-        discount: 'Discount:',
-        service: 'Service:',
-        total: 'TOTAL:',
-        payment: 'Payment:',
-        thanks: 'Thank you for your visit!',
-        dineIn: 'DINE IN',
-        takeaway: 'TAKEAWAY',
-      },
-      ku: {
-        date: 'بەروار:',
-        orderNo: 'ژمارەی پسوولە:',
-        type: 'جۆر:',
-        table: 'مێز:',
-        item: 'بابەت',
-        qty: 'دانە',
-        price: 'نرخ',
-        subtotal: 'کۆی گشتی:',
-        discount: 'داشکاندن:',
-        service: 'خزمەتگوزاری:',
-        total: 'کۆی کۆتایی:',
-        payment: 'شێوازی پارەدان:',
-        thanks: 'سەردانەکەت جێگەی دڵخۆشیمانە',
-        dineIn: 'DINE IN',
-        takeaway: 'TAKEAWAY',
-      },
-      ar: {
-        date: 'التاريخ:',
-        orderNo: 'رقم الطلب:',
-        type: 'النوع:',
-        table: 'الطاولة:',
-        item: 'الصنف',
-        qty: 'الكمية',
-        price: 'السعر',
-        subtotal: 'المجموع الإجمالي:',
-        discount: 'الخصم:',
-        service: 'الخدمة:',
-        total: 'الإجمالي:',
-        payment: 'طريقة الدفع:',
-        thanks: 'شكراً لزيارتكم',
-        dineIn: 'DINE IN',
-        takeaway: 'TAKEAWAY',
-      },
-    }[lang] || {
-      date: 'Date:',
-      orderNo: 'Order No:',
-      type: 'Type:',
-      table: 'Table:',
-      item: 'Item',
-      qty: 'Qty',
-      price: 'Price',
-      subtotal: 'Subtotal:',
-      discount: 'Discount:',
-      service: 'Service:',
-      total: 'TOTAL:',
-      payment: 'Payment:',
-      thanks: 'Thank you for your visit!',
-      dineIn: 'DINE IN',
-      takeaway: 'TAKEAWAY',
-    };
-
-    let estimatedHeight = 350;
-    if (logoUrl) estimatedHeight += 120;
-    data.order.items.forEach((item) => {
-      estimatedHeight += 50;
-      if (item.selectedAddons && item.selectedAddons.length > 0) {
-        estimatedHeight += item.selectedAddons.length * 28;
-      }
-    });
-    estimatedHeight += 250;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = estimatedHeight;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Canvas fallback failed');
-
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, width, estimatedHeight);
-    ctx.fillStyle = '#000000';
-    ctx.textBaseline = 'top';
-    ctx.direction = isRtl ? 'rtl' : 'ltr';
-
-    let y = 20;
-
-    // Logo
-    if (logoUrl) {
-      try {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        await new Promise((resolve) => {
-          img.onload = resolve;
-          img.onerror = resolve;
-          img.src = logoUrl;
-        });
-        if (img.width && img.height) {
-          const lSize = 90;
-          ctx.save();
-          ctx.beginPath();
-          ctx.arc(width / 2, y + lSize / 2, lSize / 2, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.clip();
-          ctx.drawImage(img, (width - lSize) / 2, y, lSize, lSize);
-          ctx.restore();
-          y += lSize + 16;
-        }
-      } catch (e) {
-        console.warn('Logo error:', e);
-      }
-    }
-
-    const fontPrimary = isRtl ? "'Segoe UI', Tahoma, Arial, sans-serif" : "'Courier New', monospace, sans-serif";
-
-    ctx.font = '900 26px ' + fontPrimary;
-    ctx.textAlign = 'center';
-    ctx.fillText((data.cafeName || 'LAMOGE CAFE').toUpperCase(), width / 2, y);
-    y += 36;
-
-    ctx.font = 'bold 15px ' + fontPrimary;
-    ctx.fillText(data.headerText || ('Welcome to ' + (data.cafeName || 'Lamoge Cafe')), width / 2, y);
-    y += 24;
-
-    if (data.address) {
-      ctx.fillText(data.address, width / 2, y);
-      y += 22;
-    }
-    ctx.fillText(data.phone ? ('Tel: ' + data.phone) : 'Tel:', width / 2, y);
-    y += 28;
-
-    // Dashed line
-    const drawDash = (curY: number) => {
-      ctx.save();
-      ctx.setLineDash([8, 6]);
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = '#000000';
-      ctx.beginPath();
-      ctx.moveTo(14, curY);
-      ctx.lineTo(width - 14, curY);
-      ctx.stroke();
-      ctx.restore();
-    };
-
-    drawDash(y);
-    y += 16;
-
-    const startX = isRtl ? width - 14 : 14;
-    const endX = isRtl ? 14 : width - 14;
-    const alignStart = isRtl ? 'right' : 'left';
-    const alignEnd = isRtl ? 'left' : 'right';
-
-    ctx.font = 'bold 16px ' + fontPrimary;
-    ctx.textAlign = alignStart;
-    ctx.fillText(tr.date, startX, y);
-    ctx.textAlign = alignEnd;
-    ctx.fillText(new Date(data.order.createdAt).toLocaleDateString(), endX, y);
-    y += 26;
-
-    ctx.textAlign = alignStart;
-    ctx.fillText(tr.orderNo, startX, y);
-    ctx.textAlign = alignEnd;
-    ctx.fillText(data.order.invoiceCode || ('INV-' + data.order.id.slice(0, 8)), endX, y);
-    y += 26;
-
-    ctx.textAlign = alignStart;
-    ctx.fillText(tr.type, startX, y);
-    ctx.textAlign = alignEnd;
-    ctx.fillText(data.order.type === 'dine_in' ? tr.dineIn : tr.takeaway, endX, y);
-    y += 26;
-
-    drawDash(y);
-    y += 16;
-
-    // Items
-    ctx.font = '900 17px ' + fontPrimary;
-    ctx.textAlign = alignStart;
-    ctx.fillText(tr.item, startX, y);
-    ctx.textAlign = 'center';
-    ctx.fillText(tr.qty, width * 0.62, y);
-    ctx.textAlign = alignEnd;
-    ctx.fillText(tr.price, endX, y);
-    y += 28;
-
-    data.order.items.forEach((item) => {
-      const menuItem = data.menuItems.find((m) => m.id === item.menuItemId);
-      let name = menuItem?.nameKu || menuItem?.nameAr || menuItem?.nameEn || 'Item';
-      if (lang === 'ku' && menuItem?.nameKu) name = menuItem.nameKu;
-      if (lang === 'ar' && menuItem?.nameAr) name = menuItem.nameAr;
-      if (lang === 'en' && menuItem?.nameEn) name = menuItem.nameEn;
-
-      ctx.font = 'bold 16px ' + fontPrimary;
-      ctx.textAlign = alignStart;
-      ctx.fillText(name, startX, y);
-      ctx.textAlign = 'center';
-      ctx.fillText(String(item.quantity), width * 0.62, y);
-      ctx.textAlign = alignEnd;
-      ctx.fillText((item.price * item.quantity).toLocaleString(), endX, y);
-      y += 26;
-
-      if (item.selectedAddons && item.selectedAddons.length > 0) {
-        item.selectedAddons.forEach((addon) => {
-          let addonName = addon.nameKu || addon.nameAr || addon.nameEn || 'Addon';
-          if (lang === 'ku' && addon.nameKu) addonName = addon.nameKu;
-          if (lang === 'ar' && addon.nameAr) addonName = addon.nameAr;
-          if (lang === 'en' && addon.nameEn) addonName = addon.nameEn;
-
-          ctx.font = 'bold 14px ' + fontPrimary;
-          ctx.textAlign = alignStart;
-          ctx.fillText('  ↳ + ' + addonName + ' (+' + addon.price.toLocaleString() + ')', startX, y);
-          y += 22;
-        });
-      }
-    });
-
-    drawDash(y);
-    y += 16;
-
-    ctx.font = 'bold 17px ' + fontPrimary;
-    ctx.textAlign = alignStart;
-    ctx.fillText(tr.subtotal, startX, y);
-    ctx.textAlign = alignEnd;
-    ctx.fillText(data.order.subtotal.toLocaleString(), endX, y);
-    y += 28;
-
-    ctx.save();
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(14, y);
-    ctx.lineTo(width - 14, y);
-    ctx.stroke();
-    ctx.restore();
-    y += 14;
-
-    ctx.font = '900 22px ' + fontPrimary;
-    ctx.textAlign = alignStart;
-    ctx.fillText(tr.total, startX, y);
-    ctx.textAlign = alignEnd;
-    ctx.fillText(isRtl ? ('IQD ' + data.order.total.toLocaleString()) : (data.order.total.toLocaleString() + ' IQD'), endX, y);
-    y += 32;
-
-    ctx.font = 'bold 15px ' + fontPrimary;
-    ctx.textAlign = alignStart;
-    ctx.fillText(tr.payment, startX, y);
-    ctx.textAlign = alignEnd;
-    ctx.fillText(data.order.paymentMethod ? data.order.paymentMethod.toUpperCase() : 'CASH', endX, y);
-    y += 26;
-
-    drawDash(y);
-    y += 18;
-
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 15px ' + fontPrimary;
-    ctx.fillText(data.footerText || tr.thanks, width / 2, y);
-    y += 26;
-
-    ctx.font = '900 18px ' + fontPrimary;
-    ctx.fillText('***', width / 2, y);
-    y += 26;
-
-    ctx.font = 'bold 12px ' + fontPrimary;
-    ctx.fillText('POWERED BY MAS MENU', width / 2, y);
-    y += 30;
-
-    const trimmedCanvas = document.createElement('canvas');
-    trimmedCanvas.width = width;
-    trimmedCanvas.height = y;
-    const trimCtx = trimmedCanvas.getContext('2d');
-    if (trimCtx) {
-      trimCtx.drawImage(canvas, 0, 0, width, y, 0, 0, width, y);
-      return trimmedCanvas;
-    }
-
-    return canvas;
   }
 }
