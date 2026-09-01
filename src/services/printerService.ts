@@ -193,19 +193,74 @@ export class PrinterService {
       return;
     }
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/xml; charset=utf-8',
-        'If-Modified-Since': 'Thu, 01 Jan 1970 00:00:00 GMT',
-        SOAPAction: '""',
-      },
-      body: xmlPayload,
-      signal,
-    });
+    // 1. Try standard fetch first
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/xml; charset=utf-8',
+          'If-Modified-Since': 'Thu, 01 Jan 1970 00:00:00 GMT',
+          SOAPAction: '""',
+        },
+        body: xmlPayload,
+        signal,
+      });
 
-    if (!response.ok && response.status !== 200) {
-      throw new Error(`Epson ePOS printer error (HTTP status: ${response.status})`);
+      if (response.ok || response.status === 200) {
+        return;
+      }
+    } catch (fetchErr) {
+      console.warn('[PrinterService] Standard fetch failed, attempting no-cors & form bridge for iPad:', fetchErr);
+    }
+
+    // 2. Fallback: No-CORS fetch to bypass browser Mixed Content restrictions
+    try {
+      await fetch(endpoint, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'text/plain;charset=UTF-8',
+        },
+        body: xmlPayload,
+        signal,
+      });
+      return;
+    } catch (noCorsErr) {
+      console.warn('[PrinterService] No-CORS fetch failed, trying hidden DOM form dispatch:', noCorsErr);
+    }
+
+    // 3. Fallback: Hidden form POST (Allowed by WebKit across subnets)
+    try {
+      const iframe = document.createElement('iframe');
+      iframe.name = 'epos_frame_' + Date.now();
+      iframe.style.position = 'fixed';
+      iframe.style.left = '-9999px';
+      iframe.style.width = '1px';
+      iframe.style.height = '1px';
+      document.body.appendChild(iframe);
+
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = endpoint;
+      form.target = iframe.name;
+
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'SOAP_PAYLOAD';
+      input.value = xmlPayload;
+      form.appendChild(input);
+
+      document.body.appendChild(form);
+      form.submit();
+
+      setTimeout(() => {
+        if (form.parentNode) form.parentNode.removeChild(form);
+        if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+      }, 2500);
+      return;
+    } catch (formErr) {
+      console.warn('[PrinterService] Form dispatch fallback error:', formErr);
+      throw new Error(`Could not deliver print job directly to ${ip}:${targetPort}`);
     }
   }
 
