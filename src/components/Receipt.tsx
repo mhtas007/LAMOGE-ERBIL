@@ -8,7 +8,7 @@ interface ReceiptProps {
 }
 
 export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride }) => {
-  const { receiptSettings: globalReceiptSettings, language, menuItems, tables } = useAppContext();
+  const { receiptSettings: globalReceiptSettings, menuItems, tables } = useAppContext();
   
   const receiptSettings = settingsOverride || globalReceiptSettings;
 
@@ -31,191 +31,231 @@ export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride }) => 
   const displayOrder = order || dummyOrder;
   const dateObj = new Date(displayOrder.createdAt);
   
-  const formatReceiptDate = (date: Date, lang: string) => {
-    if (lang === 'ku') {
-      const year = date.getFullYear();
-      const month = date.getMonth() + 1;
-      const day = date.getDate();
-      return `${year}/${month}/${day}`;
-    }
-    return date.toLocaleDateString(lang === 'ar' ? 'ar-IQ' : 'en-US');
-  };
-
-  const formatReceiptTime = (date: Date, lang: string) => {
-    if (lang === 'ku') {
-      let hours = date.getHours();
-      const minutes = date.getMinutes();
-      const ampm = hours >= 12 ? 'ئێوارە' : 'بەیانی';
-      hours = hours % 12;
-      hours = hours ? hours : 12;
-      const minutesStr = minutes < 10 ? '0' + minutes : minutes;
-      return `${hours}:${minutesStr} ${ampm}`;
-    }
-    return date.toLocaleTimeString(lang === 'ar' ? 'ar-IQ' : 'en-US', {
-      hour: '2-digit', minute: '2-digit'
-    });
-  };
-
-  const formattedDate = formatReceiptDate(dateObj, receiptSettings.receiptLanguage || 'en');
-  const formattedTime = formatReceiptTime(dateObj, receiptSettings.receiptLanguage || 'en');
-
   const rLang = receiptSettings.receiptLanguage || 'en';
-  
+  const isRtl = rLang === 'ku' || rLang === 'ar';
+
+  const formatReceiptDate = (date: Date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    let h = date.getHours();
+    const min = String(date.getMinutes()).padStart(2, '0');
+    const sec = String(date.getSeconds()).padStart(2, '0');
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    const hStr = String(h).padStart(2, '0');
+    return `${y}/${m}/${d} ${hStr}:${min}:${sec} ${ampm}`;
+  };
+
+  const formattedDateTime = formatReceiptDate(dateObj);
+
   const tr = {
     en: {
-      date: 'Date', orderNo: 'Order No', type: 'Type',
-      table: 'Table',
-      item: 'Item', qty: 'Qty', price: 'Price',
-      subtotal: 'Subtotal', discount: 'Discount', serviceCharge: 'Service Charge', total: 'TOTAL',
-      payment: 'Payment'
+      printedAt: 'Printed At:',
+      orderNo: 'Check#',
+      type: 'Type:',
+      table: 'Table:',
+      item: 'Item',
+      qty: 'Qty',
+      price: 'Price',
+      subtotal: 'Subtotal',
+      discount: 'Discount',
+      serviceCharge: 'Service',
+      total: 'Total',
+      payment: 'Payment - Cash',
+      productsCount: 'Products Count',
+      dineIn: 'Dine In',
+      takeaway: 'Takeaway',
+      delivery: 'Delivery',
+      thanks: 'Thank you for your visit!',
+      pleasure: 'The Pleasure of Taste',
     },
     ku: {
-      date: 'بەروار', orderNo: 'ژمارەی پسوولە', type: 'جۆر',
-      table: 'مێز',
-      item: 'بابەت', qty: 'دانە', price: 'نرخ',
-      subtotal: 'کۆی گشتی', discount: 'داشکاندن', serviceCharge: 'خزمەتگوزاری', total: 'کۆی کۆتایی',
-      payment: 'شێوازی پارەدان'
+      printedAt: 'کاتی چاپکردن:',
+      orderNo: 'ژمارەی وەسڵ#',
+      type: 'جۆر:',
+      table: 'مێز:',
+      item: 'بابەت',
+      qty: 'دانە',
+      price: 'نرخ',
+      subtotal: 'کۆی گشتی',
+      discount: 'داشکاندن',
+      serviceCharge: 'خزمەتگوزاری',
+      total: 'کۆی کۆتایی',
+      payment: 'شێوازی پارەدان - نەختینە',
+      productsCount: 'ژمارەی بابەتەکان',
+      dineIn: 'Dine In',
+      takeaway: 'Takeaway',
+      delivery: 'Delivery',
+      thanks: 'سەردانەکەت جێگەی دڵخۆشیمانە',
+      pleasure: 'چێژی تایبەتی تامی خۆش',
     },
     ar: {
-      date: 'التاريخ', orderNo: 'رقم الطلب', type: 'النوع',
-      table: 'الطاولة',
-      item: 'الصنف', qty: 'الكمية', price: 'السعر',
-      subtotal: 'المجموع الإجمالي', discount: 'الخصم', serviceCharge: 'رسوم الخدمة', total: 'الإجمالي',
-      payment: 'طريقة الدفع'
+      printedAt: 'وقت الطباعة:',
+      orderNo: 'رقم الفاتورة#',
+      type: 'النوع:',
+      table: 'الطاولة:',
+      item: 'الصنف',
+      qty: 'الكمية',
+      price: 'السعر',
+      subtotal: 'المجموع الفرعي',
+      discount: 'الخصم',
+      serviceCharge: 'رسوم الخدمة',
+      total: 'الإجمالي',
+      payment: 'طريقة الدفع - نقدي',
+      productsCount: 'عدد الأصناف',
+      dineIn: 'Dine In',
+      takeaway: 'Takeaway',
+      delivery: 'Delivery',
+      thanks: 'شكراً لزيارتكم',
+      pleasure: 'متعة المذاق الرفيع',
     }
-  }[rLang];
+  }[rLang] || {
+    printedAt: 'Printed At:',
+    orderNo: 'Check#',
+    type: 'Type:',
+    table: 'Table:',
+    item: 'Item',
+    qty: 'Qty',
+    price: 'Price',
+    subtotal: 'Subtotal',
+    discount: 'Discount',
+    serviceCharge: 'Service',
+    total: 'Total',
+    payment: 'Payment - Cash',
+    productsCount: 'Products Count',
+    dineIn: 'Dine In',
+    takeaway: 'Takeaway',
+    delivery: 'Delivery',
+    thanks: 'Thank you for your visit!',
+    pleasure: 'The Pleasure of Taste',
+  };
 
   const paperWidth = receiptSettings.paperWidth || '80mm';
   const is58mm = paperWidth === '58mm';
-  const receiptWidthStyle = is58mm ? '230px' : '300px';
+  const receiptWidthStyle = is58mm ? '240px' : '310px';
+
+  const totalItemCount = displayOrder.items.reduce((sum, it) => sum + it.quantity, 0);
+
+  const curr = receiptSettings.currency || 'IQD';
+
+  const formatPrice = (val: number) => {
+    return `${curr} ${val.toLocaleString()}`;
+  };
 
   return (
     <div
-      className={`receipt-paper bg-white text-black p-4 text-sm mx-auto print:p-0 print:m-0 print:border-none font-bold ${
-        (rLang === 'ku' || rLang === 'ar') ? 'text-right font-sans' : 'text-left font-mono'
+      className={`receipt-paper bg-white text-black p-4 mx-auto print:p-0 print:m-0 print:border-none ${
+        isRtl ? 'font-sans text-right' : 'font-sans text-left'
       }`}
       style={{
         width: receiptWidthStyle,
         maxWidth: '100%',
-        direction: (rLang === 'ku' || rLang === 'ar') ? 'rtl' : 'ltr',
+        direction: isRtl ? 'rtl' : 'ltr',
         color: '#000000',
         backgroundColor: '#ffffff',
-        lineHeight: 1.6,
+        lineHeight: 1.45,
+        fontSize: '12px',
       }}
     >
-      {/* Centered Circular Logo */}
-      <div className="flex justify-center mb-3">
-        <div className="w-20 h-20 rounded-full border-2 border-black p-1 flex items-center justify-center overflow-hidden bg-white">
-          {receiptSettings.logo ? (
-            <img
-              src={receiptSettings.logo}
-              alt="Logo"
-              className="w-full h-full object-contain rounded-full grayscale"
-              style={{ filter: 'grayscale(100%) contrast(150%)' }}
-            />
-          ) : (
-            <div className="w-16 h-16 rounded-full border border-black flex items-center justify-center text-2xl">
-              ☕
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Brand Header */}
-      <div className="text-center mb-2 space-y-0.5">
-        <h1 className="text-lg sm:text-xl font-black tracking-widest uppercase text-black">
-          {receiptSettings.cafeName || 'LAMOGE CAFE'}
-        </h1>
-        <p className="text-xs font-bold text-black">
-          {receiptSettings.headerText || `Welcome to ${receiptSettings.cafeName || 'Lamoge Cafe'}`}
-        </p>
-        {receiptSettings.address && (
-          <p className="text-xs font-bold text-black">{receiptSettings.address}</p>
-        )}
-        <p className="text-xs font-bold text-black">
-          {receiptSettings.phone ? `Tel: ${receiptSettings.phone}` : 'Tel:'}
-        </p>
-      </div>
-
-      {/* Dashed Separator */}
-      <div className="border-t-2 border-dashed border-black my-2.5"></div>
-
-      {/* Order Meta Info */}
-      <div className="space-y-1.5 text-xs text-black font-bold">
-        <div className="flex justify-between items-center">
-          <span>{tr.date}:</span>
-          <span className="font-black">{formattedDate} {formattedTime}</span>
-        </div>
-        <div className="flex justify-between items-center">
-          <span>{tr.orderNo}:</span>
-          <span className="font-black text-sm">
-            {displayOrder.invoiceCode || `INV-${displayOrder.id.slice(0, 8).toUpperCase()}`}
-          </span>
-        </div>
-        <div className="flex justify-between items-center">
-          <span>{tr.type}:</span>
-          <span className="font-black uppercase">
-            {displayOrder.type === 'dine_in' ? 'DINE IN' : displayOrder.type === 'takeaway' ? 'TAKEAWAY' : 'DELIVERY'}
-          </span>
-        </div>
-        {displayOrder.type === 'dine_in' && displayOrder.tableId && (
-          <div className="flex justify-between items-center">
-            <span>{tr.table}:</span>
-            <span className="font-black text-sm">
-              {tables?.find((t) => t.id === displayOrder.tableId)?.number || displayOrder.tableId}
-            </span>
+      {/* 1. Top Logo */}
+      <div className="flex justify-center mb-2">
+        {receiptSettings.logo ? (
+          <img
+            src={receiptSettings.logo}
+            alt="Logo"
+            className="h-14 max-w-[140px] object-contain"
+            style={{ filter: 'grayscale(100%) contrast(140%)' }}
+          />
+        ) : (
+          <div className="text-xl font-bold tracking-wider text-black">
+            {receiptSettings.cafeName || 'LAMOGE'}
           </div>
         )}
       </div>
 
-      {/* Dashed Separator */}
-      <div className="border-t-2 border-dashed border-black my-2.5"></div>
-
-      {/* Items Table */}
-      <div className="mb-2 text-black">
-        <div className="flex justify-between font-black text-xs pb-1 mb-1 border-b border-black">
-          <span className="w-1/2">{tr.item}</span>
-          <span className="w-1/4 text-center">{tr.qty}</span>
-          <span className="w-1/4 text-right">{tr.price}</span>
+      {/* 2. Cafe Info Header */}
+      <div className="text-center mb-2.5 space-y-0.5 text-[11px] text-black">
+        <div className="font-semibold text-xs text-black">
+          {receiptSettings.cafeName || 'Lamoge - Branch 1'}
         </div>
+        <div>
+          {receiptSettings.headerText || `Welcome to ${receiptSettings.cafeName || 'Lamoge'}`}
+        </div>
+        {receiptSettings.address && (
+          <div>{receiptSettings.address}</div>
+        )}
+        {receiptSettings.phone && (
+          <div>Tel: {receiptSettings.phone}</div>
+        )}
+      </div>
+
+      {/* 3. Date & Order Meta */}
+      <div className="space-y-1 text-[11px] text-black mb-2">
+        <div className="text-center text-[10.5px] text-black/90">
+          {tr.printedAt} {formattedDateTime}
+        </div>
+        <div className="flex justify-between items-center text-xs pt-1">
+          <span className="font-semibold">
+            {displayOrder.type === 'dine_in' ? tr.dineIn : displayOrder.type === 'takeaway' ? tr.takeaway : tr.delivery}
+            {displayOrder.type === 'dine_in' && displayOrder.tableId && (
+              <span className="ml-1">
+                ({tr.table} {tables?.find((t) => t.id === displayOrder.tableId)?.number || displayOrder.tableId})
+              </span>
+            )}
+          </span>
+          <span>
+            {tr.orderNo} {displayOrder.invoiceCode || displayOrder.id.slice(0, 8).toUpperCase()}
+          </span>
+        </div>
+      </div>
+
+      {/* 4. Table Header */}
+      <div className="border-t border-black/50 my-1.5"></div>
+      <div className="flex justify-between items-center text-[11.5px] font-semibold text-black py-0.5">
+        <span className="w-10 text-left">{tr.qty}</span>
+        <span className="flex-1 px-1">{tr.item}</span>
+        <span className="w-24 text-right">{tr.price}</span>
+      </div>
+      <div className="border-t border-black/30 mb-1.5"></div>
+
+      {/* 5. Items List */}
+      <div className="space-y-1.5 mb-2 text-black">
         {displayOrder.items.map((item, idx) => {
           const menuItem = menuItems.find((m) => m.id === item.menuItemId);
-          const itemName = menuItem
-            ? rLang === 'ku'
-              ? menuItem.nameKu
-              : rLang === 'ar'
-              ? menuItem.nameAr
-              : menuItem.nameEn
-            : `Item #${item.menuItemId}`;
+          let itemName = 'Item';
+          if (menuItem) {
+            if (rLang === 'ku' && menuItem.nameKu) itemName = menuItem.nameKu;
+            else if (rLang === 'ar' && menuItem.nameAr) itemName = menuItem.nameAr;
+            else itemName = menuItem.nameEn || menuItem.nameKu || menuItem.nameAr || 'Item';
+          }
           const itemTotal = item.price * item.quantity;
 
           return (
-            <div key={idx} className="py-1 text-xs font-bold">
-              <div className="flex justify-between items-start font-black text-sm">
-                <div className="w-1/2 pr-1 text-black">
+            <div key={idx} className="text-[11.5px]">
+              <div className="flex justify-between items-start">
+                <span className="w-10 text-left font-medium">{item.quantity}</span>
+                <span className="flex-1 px-1 font-medium">
                   {itemName}
                   {item.variantName && (
-                    <span className="block text-xs font-bold text-black/80">
+                    <span className="text-[10.5px] text-black/80 block">
                       ({item.variantName})
                     </span>
                   )}
-                </div>
-                <div className="w-1/4 text-center text-black font-black text-sm">{item.quantity}</div>
-                <div className="w-1/4 text-right font-black text-sm">
-                  {itemTotal.toLocaleString()}
-                </div>
+                </span>
+                <span className="w-24 text-right font-medium">
+                  {formatPrice(itemTotal)}
+                </span>
               </div>
               {item.selectedAddons && item.selectedAddons.length > 0 && (
-                <div className="text-xs text-black pl-2 mt-0.5 space-y-0.5 font-bold">
+                <div className="text-[10px] text-black/80 pl-10 space-y-0.5 mt-0.5">
                   {item.selectedAddons.map((addon, aIdx) => {
-                    const addonName = rLang === 'ku' ? addon.nameKu : rLang === 'ar' ? addon.nameAr : addon.nameEn;
+                    const aName = rLang === 'ku' ? addon.nameKu : rLang === 'ar' ? addon.nameAr : addon.nameEn;
                     return (
-                      <div key={aIdx} className="flex justify-between items-center">
-                        <span>↳ + {addonName}</span>
+                      <div key={aIdx} className="flex justify-between">
+                        <span>↳ + {aName}</span>
                         {addon.price > 0 && (
-                          <span className="font-black text-[11px]">
-                            (+{addon.price.toLocaleString()})
-                          </span>
+                          <span>+{formatPrice(addon.price * item.quantity)}</span>
                         )}
                       </div>
                     );
@@ -228,65 +268,60 @@ export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride }) => 
       </div>
 
       {displayOrder.notes && (
-        <div className="p-1.5 rounded mb-2 text-xs text-black italic border border-dashed border-black">
-          <span className="font-black not-italic">Note:</span> {displayOrder.notes}
+        <div className="p-1 rounded mb-2 text-[10.5px] text-black italic border border-dashed border-black/30">
+          <span className="font-semibold not-italic">Note:</span> {displayOrder.notes}
         </div>
       )}
 
-      {/* Dashed Separator */}
-      <div className="border-t-2 border-dashed border-black my-2.5"></div>
-
-      {/* Totals Summary */}
-      <div className="space-y-1 text-xs text-black font-bold">
-        <div className="flex justify-between text-sm">
-          <span>{tr.subtotal}:</span>
-          <span className="font-black">{displayOrder.subtotal.toLocaleString()}</span>
+      {/* 6. Summary Rows */}
+      <div className="border-t border-black/30 my-1.5"></div>
+      <div className="space-y-1 text-[11.5px] text-black">
+        <div className="flex justify-between">
+          <span>{tr.subtotal}</span>
+          <span>{formatPrice(displayOrder.subtotal)}</span>
         </div>
         {displayOrder.discount > 0 && (
-          <div className="flex justify-between text-sm">
-            <span>{tr.discount}:</span>
-            <span className="font-black">-{displayOrder.discount.toLocaleString()}</span>
+          <div className="flex justify-between">
+            <span>{tr.discount}</span>
+            <span>-{formatPrice(displayOrder.discount)}</span>
           </div>
         )}
         {displayOrder.serviceCharge && displayOrder.serviceCharge > 0 ? (
-          <div className="flex justify-between text-sm">
-            <span>{tr.serviceCharge}:</span>
-            <span className="font-black">+{displayOrder.serviceCharge.toLocaleString()}</span>
+          <div className="flex justify-between">
+            <span>{tr.serviceCharge}</span>
+            <span>+{formatPrice(displayOrder.serviceCharge)}</span>
           </div>
         ) : null}
 
-        {/* Solid Line Separator */}
-        <div className="border-t-2 border-black my-1.5"></div>
-
-        {/* Grand Total */}
-        <div className="flex justify-between items-center font-black text-base pt-0.5">
-          <span className="uppercase">{tr.total}:</span>
-          <span className="text-lg font-black">
-            {(rLang === 'ku' || rLang === 'ar') ? `IQD ${displayOrder.total.toLocaleString()}` : `${displayOrder.total.toLocaleString()} IQD`}
-          </span>
+        {/* 7. Total Row - ONLY ONE BOLD AS REQUESTED! */}
+        <div className="border-t border-dashed border-black/50 my-1.5"></div>
+        <div className="flex justify-between items-center text-sm font-black text-black py-0.5">
+          <span className="font-black text-sm uppercase">{tr.total}</span>
+          <span className="font-black text-sm">{formatPrice(displayOrder.total)}</span>
         </div>
+        <div className="border-t border-dashed border-black/50 my-1.5"></div>
 
-        {/* Payment */}
-        <div className="flex justify-between text-xs pt-0.5">
-          <span>{tr.payment}:</span>
-          <span className="uppercase font-black">{displayOrder.paymentMethod ? displayOrder.paymentMethod.toUpperCase() : 'CASH'}</span>
+        {/* Payment Row */}
+        <div className="flex justify-between text-[11px] pt-0.5">
+          <span>
+            {displayOrder.paymentMethod === 'card' ? (isRtl ? 'شێوازی پارەدان - کارت' : 'Payment - Card') : tr.payment}
+          </span>
+          <span>{formatPrice(displayOrder.total)}</span>
         </div>
       </div>
 
-      {/* Dashed Separator */}
-      <div className="border-t-2 border-dashed border-black my-2.5"></div>
-
-      {/* Footer */}
-      <div className="text-center text-xs space-y-1 mt-2 text-black font-bold">
-        <p className="font-bold">
-          {receiptSettings.footerText || 'Thank you for your visit!'}
-        </p>
-        <div className="py-0.5 tracking-widest text-sm font-black">
-          ***
+      {/* 8. Products Count & Footer */}
+      <div className="border-t border-black/30 my-2"></div>
+      <div className="text-center text-[10.5px] space-y-1 text-black">
+        <div className="font-medium">
+          {tr.productsCount} {totalItemCount}
         </div>
-        <p className="text-[10px] uppercase tracking-widest text-black pt-1 font-black">
+        <div>
+          {receiptSettings.footerText || tr.thanks}
+        </div>
+        <div className="text-[9px] uppercase tracking-widest text-black/60 pt-1 font-semibold">
           POWERED BY MAS MENU
-        </p>
+        </div>
       </div>
     </div>
   );
