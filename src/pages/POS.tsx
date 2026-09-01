@@ -266,6 +266,11 @@ export const POS: React.FC = () => {
         isRtl ? `وەسڵ بە سەرکەوتوویی چاپکرا لە پرینتەر (${res.printerIp})` : `Receipt printed silently to ${res.printerIp} (${res.durationMs}ms)`,
         'success'
       );
+
+      // Automatically close the receipt window after network printing
+      setTimeout(() => {
+        handleCloseReceipt();
+      }, 500);
     } catch (err: any) {
       console.warn('[POS Checkout] Silent network print exception:', err.message);
       showToast(
