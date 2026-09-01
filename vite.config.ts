@@ -18,10 +18,10 @@ function thermalPrinterMiddleware() {
               const payload = JSON.parse(body || '{}');
               const targetIp = (payload.printerIp || '192.168.1.35').trim();
               const targetPort = 9100;
-              const { plainText, openCashDrawer, autoCut, cafeName, order } = payload;
+              const { plainText, rasterData, bytesWidth, height, openCashDrawer, autoCut, cafeName, order } = payload;
               
               const client = new net.Socket();
-              client.setTimeout(4000);
+              client.setTimeout(6000);
               
               client.connect(targetPort, targetIp, () => {
                 // Initialize printer & default codepage
@@ -32,7 +32,20 @@ function thermalPrinterMiddleware() {
                   client.write(Buffer.from([0x1b, 0x70, 0x00, 0x19, 0xfa]));
                 }
                 
-                if (plainText) {
+                if (rasterData) {
+                  // High-Definition Monochrome Raster Graphics (Kurdish, Arabic, Logo, WYSIWYG)
+                  const rasterBuf = Buffer.from(rasterData, 'base64');
+                  const bW = bytesWidth || 72; // 576 dots / 8
+                  const h = height || Math.floor(rasterBuf.length / bW);
+                  const xL = bW % 256;
+                  const xH = Math.floor(bW / 256);
+                  const yL = h % 256;
+                  const yH = Math.floor(h / 256);
+                  
+                  const rasterHeader = Buffer.from([0x1d, 0x76, 0x30, 0x00, xL, xH, yL, yH]);
+                  client.write(Buffer.concat([rasterHeader, rasterBuf]));
+                  client.write(Buffer.from([0x1b, 0x64, 0x03])); // feed 3 lines
+                } else if (plainText) {
                   // Send clean formatted receipt
                   client.write(Buffer.from(plainText + '\n\n', 'utf8'));
                 } else if (order) {

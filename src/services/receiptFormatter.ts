@@ -19,6 +19,7 @@ export interface FormattedReceiptData {
   cashierName?: string;
   tableName?: string;
   receiptLanguage?: 'en' | 'ku' | 'ar';
+  logo?: string;
 }
 
 export class ReceiptFormatter {

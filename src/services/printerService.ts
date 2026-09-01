@@ -5,6 +5,7 @@
  */
 import { printerConfigService, PrinterConfig } from './printerConfigService';
 import { ReceiptFormatter, FormattedReceiptData } from './receiptFormatter';
+import { ReceiptImageRenderer } from './receiptImageRenderer';
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
 
 export interface PrintResult {
@@ -263,6 +264,20 @@ export class PrinterService {
     options: { autoCut?: boolean; openCashDrawer?: boolean },
     signal: AbortSignal
   ): Promise<void> {
+    let rasterPayload: any = null;
+    try {
+      const receiptSettings = await printerConfigService.getPrinterConfig();
+      // Render pixel-perfect monochrome raster for Kurdish, Arabic typography & Logo
+      const rasterResult = await ReceiptImageRenderer.renderToRaster(
+        data,
+        (receiptSettings.paperWidth || '80mm') as any,
+        data.logo || (receiptSettings as any).logo
+      );
+      rasterPayload = rasterResult;
+    } catch (renderErr) {
+      console.warn('[PrinterService] Raster render fallback to plain text:', renderErr);
+    }
+
     const plainText = ReceiptFormatter.buildPlainText(data);
     const endpoints = ['/api/print', `http://${window.location.hostname}:3001/api/print`];
 
@@ -277,6 +292,9 @@ export class PrinterService {
           body: JSON.stringify({
             ...data,
             plainText,
+            rasterData: rasterPayload?.rasterData,
+            bytesWidth: rasterPayload?.bytesWidth,
+            height: rasterPayload?.height,
             printerIp: ip,
             autoCut: options.autoCut,
             openCashDrawer: options.openCashDrawer,
