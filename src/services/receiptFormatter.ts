@@ -142,32 +142,45 @@ ${itemsXml}      <text align="center">${divider}&#10;</text>
    */
   public static buildPlainText(data: FormattedReceiptData, charsPerLine = 40): string {
     const divider = '-'.repeat(charsPerLine);
+    const doubleDivider = '='.repeat(charsPerLine);
     const curr = data.currencySymbol || 'IQD';
-    let text = `\n${this.centerText(data.cafeName, charsPerLine)}\n`;
+
+    let text = '\n';
+    text += `${this.centerText(data.cafeName?.toUpperCase() || 'MAS CAFE', charsPerLine)}\n`;
+    if (data.headerText) text += `${this.centerText(data.headerText, charsPerLine)}\n`;
     if (data.address) text += `${this.centerText(data.address, charsPerLine)}\n`;
     if (data.phone) text += `${this.centerText(`Tel: ${data.phone}`, charsPerLine)}\n`;
-    text += `${divider}\n`;
+    text += `${doubleDivider}\n`;
+
+    // Order meta
     text += `Order #: ${data.order.invoiceCode || data.order.id}\n`;
-    text += `Date: ${new Date(data.order.createdAt).toLocaleString()}\n`;
+    text += `Date:    ${new Date(data.order.createdAt).toLocaleString()}\n`;
     if (data.order.tableId || data.tableName) {
-      text += `TABLE: ${data.tableName || data.order.tableId}\n`;
+      text += `Table:   ${data.tableName || data.order.tableId}\n`;
     }
-    text += `Type: ${data.order.type?.toUpperCase() || 'DINE-IN'} | Pay: ${data.order.paymentMethod?.toUpperCase() || 'CASH'}\n`;
+    text += `Type:    ${data.order.type?.toUpperCase() || 'DINE-IN'} | Pay: ${data.order.paymentMethod?.toUpperCase() || 'CASH'}\n`;
+    text += `${divider}\n`;
+
+    // Header
+    const colItemWidth = charsPerLine - 14;
+    text += `ITEM`.padEnd(colItemWidth) + `QTY`.padStart(4) + `PRICE`.padStart(10) + '\n';
     text += `${divider}\n`;
 
     data.order.items.forEach((item) => {
       const menuItem = data.menuItems.find((m) => m.id === item.menuItemId);
       const name = (menuItem?.nameEn || menuItem?.nameKu || menuItem?.nameAr || 'Item') + (item.variantName ? ` (${item.variantName})` : '');
-      const priceStr = `${(item.price * item.quantity).toLocaleString()} ${curr}`;
-      const qtyStr = `${item.quantity}x `;
-      const available = Math.max(10, charsPerLine - priceStr.length);
-      text += (qtyStr + name).padEnd(available).slice(0, available) + priceStr + '\n';
+      const priceStr = `${(item.price * item.quantity).toLocaleString()}`;
+      const qtyStr = `${item.quantity}`;
+
+      const truncatedName = name.slice(0, colItemWidth - 1).padEnd(colItemWidth);
+      text += truncatedName + qtyStr.padStart(4) + priceStr.padStart(10) + '\n';
+
       if (item.selectedAddons && item.selectedAddons.length > 0) {
         const addonNames = item.selectedAddons.map(a => a.nameEn || a.nameKu || a.nameAr).join(', ');
-        text += `  + ${addonNames}\n`;
+        text += `  + ${addonNames.slice(0, charsPerLine - 5)}\n`;
       }
       if (item.notes) {
-        text += `  * ${item.notes}\n`;
+        text += `  * ${item.notes.slice(0, charsPerLine - 5)}\n`;
       }
     });
 
@@ -179,9 +192,18 @@ ${itemsXml}      <text align="center">${divider}&#10;</text>
     if (data.order.serviceCharge) {
       text += `Service:`.padEnd(charsPerLine - `+${data.order.serviceCharge.toLocaleString()} ${curr}`.length) + `+${data.order.serviceCharge.toLocaleString()} ${curr}\n`;
     }
-    text += `TOTAL:`.padEnd(charsPerLine - `${data.order.total.toLocaleString()} ${curr}`.length) + `${data.order.total.toLocaleString()} ${curr}\n`;
-    text += `${divider}\n`;
-    text += `${this.centerText(data.footerText || 'Thank you for your visit!', charsPerLine)}\n\n\n\n`;
+
+    // Total Box
+    text += `${doubleDivider}\n`;
+    text += `TOTAL DUE:`.padEnd(charsPerLine - `${data.order.total.toLocaleString()} ${curr}`.length) + `${data.order.total.toLocaleString()} ${curr}\n`;
+    text += `${doubleDivider}\n`;
+
+    // Footer
+    if (data.footerText) {
+      text += `${this.centerText(data.footerText, charsPerLine)}\n`;
+    }
+    text += `${this.centerText('★ ★ ★ ★ ★', charsPerLine)}\n`;
+    text += `${this.centerText('POWERED BY MAS POS', charsPerLine)}\n\n\n\n`;
 
     return text;
   }
