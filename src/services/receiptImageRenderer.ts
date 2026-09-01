@@ -1,4 +1,4 @@
-﻿import { FormattedReceiptData } from './receiptFormatter';
+import { FormattedReceiptData } from './receiptFormatter';
 import html2canvas from 'html2canvas';
 
 export interface RasterReceiptResult {
@@ -154,7 +154,6 @@ export class ReceiptImageRenderer {
         ${data.headerText || `Welcome to ${data.cafeName || 'Lamoge'}`}
       </div>
       ${data.address ? `<div style="font-size: ${is58mm ? '11px' : '12px'}; color: #333; margin-top: 2px;">${data.address}</div>` : ''}
-      ${data.phone ? `<div style="font-size: ${is58mm ? '11px' : '12px'}; color: #333; margin-top: 2px;">Tel: ${data.phone}</div>` : ''}
     </div>`;
 
     // 3. Meta lines
