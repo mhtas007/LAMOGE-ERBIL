@@ -372,25 +372,14 @@ export const Settings: React.FC = () => {
                     <textarea rows={2} name="footerText" value={formData.footerText || ''} onChange={handleChange} className="w-full bg-natural-surface border border-natural-border rounded-xl py-3 px-4 focus:outline-none focus:border-natural-dark focus:ring-2 focus:ring-natural-dark/20 transition-all shadow-sm resize-none" />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-bold text-natural-text mb-2">Receipt Print Language</label>
-                      <select name="receiptLanguage" value={formData.receiptLanguage || 'en'} onChange={handleChange} className="w-full bg-natural-surface border border-natural-border rounded-xl py-3 px-4 focus:outline-none focus:border-natural-dark focus:ring-2 focus:ring-natural-dark/20 transition-all shadow-sm appearance-none cursor-pointer">
-                        <option value="en">English</option>
-                        <option value="ku">Kurdish / كوردي</option>
-                        <option value="ar">Arabic / عربي</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-natural-text mb-2">Tax ID / VAT Number</label>
-                      <input type="text" name="taxId" value={formData.taxId || ''} onChange={handleChange} placeholder="e.g. 123456789" className="w-full bg-natural-surface border border-natural-border rounded-xl py-3 px-4 focus:outline-none focus:border-natural-dark focus:ring-2 focus:ring-natural-dark/20 transition-all shadow-sm" />
-                    </div>
+                  <div>
+                    <label className="block text-sm font-bold text-natural-text mb-2">Receipt Print Language</label>
+                    <select name="receiptLanguage" value={formData.receiptLanguage || 'en'} onChange={handleChange} className="w-full bg-natural-surface border border-natural-border rounded-xl py-3 px-4 focus:outline-none focus:border-natural-dark focus:ring-2 focus:ring-natural-dark/20 transition-all shadow-sm appearance-none cursor-pointer">
+                      <option value="en">English</option>
+                      <option value="ku">Kurdish / كوردي</option>
+                      <option value="ar">Arabic / عربي</option>
+                    </select>
                   </div>
-
-                  <label className="flex items-center gap-3 bg-natural-bg p-4 rounded-xl border border-natural-border cursor-pointer hover:border-natural-accent transition-colors">
-                    <input type="checkbox" name="showVat" checked={formData.showVat || false} onChange={handleCheckboxChange} className="w-5 h-5 accent-natural-dark cursor-pointer rounded" />
-                    <span className="text-sm font-bold text-natural-text">Show Tax ID on Receipt</span>
-                  </label>
 
                   {/* Network Hardware Section */}
                   <div className="pt-6 border-t border-natural-border/60">
