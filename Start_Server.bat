@@ -1,13 +1,10 @@
 @echo off
 title LAMOGE CAFE POS SERVER
-cd /d "c:\Users\Ram Computer\Downloads\cafe-pos-system (14)"
+cd /d "%~dp0"
 echo ========================================================
 echo            LAMOGE POS SERVER IS RUNNING
 echo ========================================================
-echo Local:   http://localhost:3000
-echo Network: http://192.168.1.86:3000
-echo Printer: 192.168.1.35:9100
+echo POS Server is starting on port 3000...
+echo Keep this window open while the cafe is operating.
 echo ========================================================
-echo To keep POS working on iPad, keep this window open.
-echo ========================================================
-npm.cmd run dev
+call npm.cmd run dev
