@@ -1,4 +1,4 @@
-﻿import { FormattedReceiptData } from './receiptFormatter';
+import { FormattedReceiptData } from './receiptFormatter';
 
 export interface RasterReceiptResult {
   rasterData: string;
@@ -102,6 +102,7 @@ export class ReceiptImageRenderer {
     let estimatedHeight = is58mm ? 420 : 520;
     estimatedHeight += is58mm ? 120 : 160;
     if (data.address) estimatedHeight += 36;
+    if (data.phone) estimatedHeight += 28;
     data.order.items.forEach((it) => {
       estimatedHeight += is58mm ? 36 : 46;
       if (it.selectedAddons && it.selectedAddons.length > 0) {
@@ -128,8 +129,16 @@ export class ReceiptImageRenderer {
 
     let y = is58mm ? 12 : 18;
 
-    // --- 1. DRAW LOGO ---
-    const logoSource = logoUrl || data.logo || '/lamoge_logo.png';
+    // --- 1. DRAW LOGO (Dynamic from Settings) ---
+    let logoSource: string | null = null;
+    if (data.logo !== undefined) {
+      logoSource = data.logo; // can be custom data: URL, image URL, or null if removed
+    } else if (logoUrl) {
+      logoSource = logoUrl;
+    } else {
+      logoSource = '/lamoge_logo.png';
+    }
+
     if (logoSource) {
       try {
         const logoImg = new Image();
@@ -137,7 +146,7 @@ export class ReceiptImageRenderer {
         await new Promise((resolve) => {
           logoImg.onload = resolve;
           logoImg.onerror = resolve;
-          logoImg.src = logoSource;
+          logoImg.src = logoSource!;
           if (logoImg.complete) resolve(null);
         });
 
@@ -159,7 +168,7 @@ export class ReceiptImageRenderer {
       }
     }
 
-    // --- 2. CAFE NAME (30px) ---
+    // --- 2. CAFE NAME & INFO (Dynamic from Settings) ---
     ctx.direction = isRtl ? 'rtl' : 'ltr';
     ctx.textAlign = 'center';
 
@@ -174,6 +183,12 @@ export class ReceiptImageRenderer {
     if (data.address) {
       ctx.font = `400 ${is58mm ? '14px' : '17px'} ${fontPrimary}`;
       ctx.fillText(data.address, centerX, y);
+      y += is58mm ? 20 : 24;
+    }
+
+    if (data.phone) {
+      ctx.font = `400 ${is58mm ? '14px' : '17px'} ${fontPrimary}`;
+      ctx.fillText(`Tel: ${data.phone}`, centerX, y);
       y += is58mm ? 20 : 24;
     }
 

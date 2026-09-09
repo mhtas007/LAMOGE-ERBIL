@@ -250,7 +250,7 @@ export const POS: React.FC = () => {
     try {
       const res = await PrinterService.printReceipt({
         order: orderToPrint,
-        cafeName: receiptSettings.cafeName || 'MAS POS',
+        cafeName: receiptSettings.cafeName || 'LAMOGE CAFE',
         address: receiptSettings.address,
         phone: receiptSettings.phone,
         headerText: receiptSettings.headerText,
