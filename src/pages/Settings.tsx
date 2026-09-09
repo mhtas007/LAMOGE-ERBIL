@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { Settings as SettingsIcon, Store, Receipt as ReceiptIcon, Bell, Shield, Database, AlertTriangle, Download, Upload, Trash2, Printer, Send, Sparkles, X, Wifi, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { Settings as SettingsIcon, Store, Receipt as ReceiptIcon, Bell, Shield, Database, AlertTriangle, Download, Upload, Trash2, Printer, Send, Sparkles, X, Wifi, CheckCircle2, AlertCircle, Loader2, Server, FolderArchive, Laptop, Terminal, ExternalLink } from 'lucide-react';
 import { Receipt } from '../components/Receipt';
 import { PrinterService } from '../services/printerService';
 
@@ -12,6 +12,7 @@ export const Settings: React.FC = () => {
   const tabs = [
     { id: 'general', icon: Store, label: t('cafeInformation'), desc: 'Manage your cafe identity and basic info' },
     { id: 'printer', icon: Printer, label: t('printerSettings'), desc: 'Configure receipts and hardware' },
+    { id: 'server', icon: Server, label: isRtl ? 'سێرڤەر و لاپتۆپی سەرەکی' : 'Base Server & iPad', desc: isRtl ? 'داگرتنی فایل بۆ لاپتۆپ و بەستنەوەی ئایپاد' : 'Download server files & connect iPad' },
     { id: 'telegram', icon: Send, label: isRtl ? 'ڕێکخستنی تەلەگرام' : 'Telegram Integration', desc: 'Send shift & session reports to Telegram' },
     { id: 'backup', icon: Database, label: t('backupRestore'), desc: 'Export or import your data securely' },
     { id: 'danger', icon: AlertTriangle, label: t('dangerZone'), desc: 'Irreversible administrative actions' },
@@ -625,6 +626,177 @@ export const Settings: React.FC = () => {
                   <h3 className="font-bold text-natural-text mb-6 uppercase tracking-widest text-xs">Live Preview</h3>
                   <div className="bg-natural-surface p-4 shadow-md w-full rounded-sm">
                     <Receipt settingsOverride={formData} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'server' && (
+            <div className="max-w-3xl animate-in fade-in slide-in-from-bottom-2 duration-300 p-2 sm:p-4 space-y-8">
+              {/* Header */}
+              <div className="border-b border-natural-border/60 pb-6">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-2xl font-bold text-natural-text flex items-center gap-2.5">
+                      <Server className="text-natural-dark" size={26} />
+                      <span>{isRtl ? 'بنکەی سەرەکی و سێرڤەری لاپتۆپ' : 'Main Base Server & iPad Connect'}</span>
+                    </h2>
+                    <p className="text-natural-text-secondary mt-1.5 text-sm">
+                      {isRtl
+                        ? 'داگرتنی فایلەکان بۆ کۆمپیوتەری نوێ بۆ ئەوەی ببێتە سێرڤەری سەرەکی کافێکە و ئایپاد و پرینتەرەکەی پێوە ببەسترێتەوە.'
+                        : 'Download the server package to run on the cashier PC/laptop as the main base station for iPads and thermal printers.'}
+                    </p>
+                  </div>
+                  <span className="text-xs font-bold px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
+                    <CheckCircle2 size={15} />
+                    <span>{isRtl ? 'ئامادەکراوە بۆ گواستنەوە' : 'Ready for Transfer'}</span>
+                  </span>
+                </div>
+              </div>
+
+              {/* Main Download Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* 1. Full Package ZIP */}
+                <div className="bg-natural-bg border-2 border-natural-dark/20 hover:border-natural-dark p-6 rounded-2xl transition-all shadow-sm flex flex-col justify-between">
+                  <div>
+                    <div className="w-12 h-12 rounded-xl bg-natural-dark text-white flex items-center justify-center mb-4 shadow-sm">
+                      <FolderArchive size={24} />
+                    </div>
+                    <h3 className="font-bold text-natural-text text-lg mb-1">
+                      {isRtl ? 'داگرتنی پۆکەی تەواوی سێرڤەر' : 'Download Full Server Package'}
+                    </h3>
+                    <p className="text-xs text-natural-text-secondary leading-relaxed mb-6">
+                      {isRtl
+                        ? 'فایلی زیپکراوی (ZIP) تەواوی سیستەمەکە لەگەڵ فایلی START_POS_SERVER.bat و هەموو کۆدەکان بۆ لاپتۆپی نوێ.'
+                        : 'Complete ZIP package containing all system files, auto-runner bat script, QR engine, and local bridge.'}
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <a
+                      href="/downloads/LAMOGE_POS_SERVER.zip"
+                      download="LAMOGE_POS_SERVER.zip"
+                      className="w-full bg-natural-dark hover:opacity-90 text-white py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow transition-transform active:scale-95"
+                    >
+                      <Download size={16} />
+                      <span>{isRtl ? 'داگرتنی فایلی زیپ (Direct ZIP)' : 'Download Server ZIP (Direct)'}</span>
+                    </a>
+                    <a
+                      href="https://github.com/mhtas007/LAMOGE-ERBIL/archive/refs/heads/main.zip"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full bg-natural-surface border border-natural-border hover:bg-natural-bg text-natural-text py-2.5 px-4 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 transition-colors"
+                    >
+                      <ExternalLink size={14} />
+                      <span>{isRtl ? 'داگرتن لە گیتھەب (GitHub ZIP)' : 'Download from GitHub'}</span>
+                    </a>
+                  </div>
+                </div>
+
+                {/* 2. Node.js & Prerequisites */}
+                <div className="bg-natural-bg border border-natural-border hover:border-natural-accent/50 p-6 rounded-2xl transition-all shadow-sm flex flex-col justify-between">
+                  <div>
+                    <div className="w-12 h-12 rounded-xl bg-emerald-500/15 text-emerald-600 flex items-center justify-center mb-4">
+                      <Terminal size={24} />
+                    </div>
+                    <h3 className="font-bold text-natural-text text-lg mb-1">
+                      {isRtl ? 'پێداویستی Node.js (بۆ کۆمپیوتەری نوێ)' : 'Node.js LTS (For New PC)'}
+                    </h3>
+                    <p className="text-xs text-natural-text-secondary leading-relaxed mb-6">
+                      {isRtl
+                        ? 'ئەگەر کۆمپیوتەرە نوێیەکە Node.js ی لەسەر نییە، سەرەتا پێویستە ئەمە دابەزێنیت و دایمەزرێنیت (تەنها ١ جار).'
+                        : 'If the new computer does not have Node.js installed, download the official LTS installer (required once).'}
+                    </p>
+                  </div>
+                  <div>
+                    <a
+                      href="https://nodejs.org/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow transition-transform active:scale-95"
+                    >
+                      <ExternalLink size={16} />
+                      <span>{isRtl ? 'داگرتنی فەرمی Node.js' : 'Download Node.js Official'}</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4-Step Visual Guide */}
+              <div className="bg-natural-surface border border-natural-border rounded-2xl p-6 shadow-sm">
+                <h3 className="font-bold text-natural-text text-base mb-4 flex items-center gap-2">
+                  <Laptop size={18} className="text-natural-dark" />
+                  <span>{isRtl ? 'چۆن لەسەر کۆمپیوتەری نوێ کار دەکات؟ (٤ هەنگاوی ئاسان)' : 'How to Run on New PC (4 Easy Steps)'}</span>
+                </h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <div className="bg-natural-bg p-4 rounded-xl border border-natural-border space-y-1.5">
+                    <div className="font-bold text-natural-dark flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-natural-dark text-white flex items-center justify-center text-[10px]">1</span>
+                      <span>{isRtl ? 'دابەزاندن و دەرهێنان' : 'Download & Extract'}</span>
+                    </div>
+                    <p className="text-natural-text-secondary leading-relaxed">
+                      {isRtl
+                        ? 'فایلی زیپەکە لەسەرەوە دابەزێنە و لەسەر کۆمپیوتەرە نوێیەکە بیکەرەوە (Extract Here).'
+                        : 'Download the server ZIP and extract it to Desktop or Downloads on the new PC.'}
+                    </p>
+                  </div>
+
+                  <div className="bg-natural-bg p-4 rounded-xl border border-natural-border space-y-1.5">
+                    <div className="font-bold text-natural-dark flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-natural-dark text-white flex items-center justify-center text-[10px]">2</span>
+                      <span>{isRtl ? 'دەستپێکردن بە ١ کلیک' : '1-Click Server Launch'}</span>
+                    </div>
+                    <p className="text-natural-text-secondary leading-relaxed">
+                      {isRtl
+                        ? 'لە ناو فۆڵدەرەکە کلیک لەسەر START_POS_SERVER.bat بکە. خۆی پشکنین دەکات و دەستپێدەکات.'
+                        : 'Double-click START_POS_SERVER.bat. It verifies everything and starts the network base.'}
+                    </p>
+                  </div>
+
+                  <div className="bg-natural-bg p-4 rounded-xl border border-natural-border space-y-1.5">
+                    <div className="font-bold text-natural-dark flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-natural-dark text-white flex items-center justify-center text-[10px]">3</span>
+                      <span>{isRtl ? 'پەڕەی بارکۆدی ئایپاد' : 'Auto QR Code Screen'}</span>
+                    </div>
+                    <p className="text-natural-text-secondary leading-relaxed">
+                      {isRtl
+                        ? 'پەڕەیەکی بارکۆد بە ئۆتۆماتیکی لەسەر شاشەی لاپتۆپەکە دەکرێتەوە لەگەڵ لینکی تایبەتی ئایپاد.'
+                        : 'A web window pops up on the laptop displaying a large scannable QR Code and direct link.'}
+                    </p>
+                  </div>
+
+                  <div className="bg-natural-bg p-4 rounded-xl border border-natural-border space-y-1.5">
+                    <div className="font-bold text-natural-dark flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-natural-dark text-white flex items-center justify-center text-[10px]">4</span>
+                      <span>{isRtl ? 'بەستنەوەی ئایپاد لە وایفای' : 'Connect iPad on Wi-Fi'}</span>
+                    </div>
+                    <p className="text-natural-text-secondary leading-relaxed">
+                      {isRtl
+                        ? 'ئایپاد بخە سەر هەمان وایفای (Wi-Fi) و کامێراکەی بگرە لەسەر بارکۆدەکە، دەستبەجێ پەیوەست دەبێت!'
+                        : 'Ensure iPad is on the same Wi-Fi. Point iPad camera at the QR code to open instantly!'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Helper Tools / Advanced */}
+              <div className="bg-natural-bg border border-natural-border rounded-2xl p-5 space-y-3">
+                <div className="font-bold text-xs text-natural-text">
+                  {isRtl ? '💡 فایلی یارمەتیدەر لە ناو فۆڵدەرەکە:' : '💡 Included Utility Files:'}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="p-3 bg-natural-surface rounded-xl border border-natural-border/70">
+                    <span className="font-mono font-bold text-natural-dark block mb-1">CREATE_DESKTOP_SHORTCUT.bat</span>
+                    <span className="text-natural-text-secondary">
+                      {isRtl ? 'شۆرتکەتێک دەخاتە سەر شاشەی سەرەکی (Desktop) بۆ دەستپێکردنی خێرای ڕۆژانە.' : 'Places a 1-click shortcut on Desktop for daily launch.'}
+                    </span>
+                  </div>
+                  <div className="p-3 bg-natural-surface rounded-xl border border-natural-border/70">
+                    <span className="font-mono font-bold text-natural-dark block mb-1">ALLOW_FIREWALL.bat</span>
+                    <span className="text-natural-text-secondary">
+                      {isRtl ? 'فایەروۆڵی ویندۆز دەکاتەوە ئەگەر ویندۆز ڕێگری لە گەیشتنی ئایپاد کرد.' : 'Opens Windows Firewall ports 3000 & 3001 if blocked.'}
+                    </span>
                   </div>
                 </div>
               </div>
