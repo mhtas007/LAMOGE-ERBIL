@@ -40,6 +40,7 @@ export class ReceiptImageRenderer {
         dineIn: 'Dine In',
         takeaway: 'Takeaway',
         delivery: 'Delivery',
+        welcome: 'Welcome to',
         thanks: 'Thank you for your visit!',
         pleasure: 'The Pleasure of Taste',
       },
@@ -55,10 +56,11 @@ export class ReceiptImageRenderer {
         serviceCharge: 'خزمەتگوزاری:',
         total: 'کۆی کۆتایی:',
         productsCount: 'ژمارەی بابەتەکان',
-        dineIn: 'Dine In',
-        takeaway: 'Takeaway',
-        delivery: 'Delivery',
-        thanks: 'سەردانەکەت جێگەی دڵخۆشیمانە',
+        dineIn: 'هۆڵ',
+        takeaway: 'سەفەری',
+        delivery: 'گەیاندن',
+        welcome: 'بەخێر بێن بۆ',
+        thanks: 'سوپاس بۆ سەردانەکەت',
         pleasure: 'چێژی تایبەتی تامی خۆش',
       },
       ar: {
@@ -73,9 +75,10 @@ export class ReceiptImageRenderer {
         serviceCharge: 'رسوم الخدمة:',
         total: 'الإجمالي:',
         productsCount: 'عدد الأصناف',
-        dineIn: 'Dine In',
-        takeaway: 'Takeaway',
-        delivery: 'Delivery',
+        dineIn: 'صالة',
+        takeaway: 'سفري',
+        delivery: 'توصيل',
+        welcome: 'أهلاً وسهلاً بكم في',
         thanks: 'شكراً لزيارتكم',
         pleasure: 'متعة المذاق الرفيع',
       },
@@ -94,6 +97,7 @@ export class ReceiptImageRenderer {
       dineIn: 'Dine In',
       takeaway: 'Takeaway',
       delivery: 'Delivery',
+      welcome: 'Welcome to',
       thanks: 'Thank you for your visit!',
       pleasure: 'The Pleasure of Taste',
     };
@@ -176,7 +180,11 @@ export class ReceiptImageRenderer {
     y += is58mm ? 30 : 38;
 
     ctx.font = `500 ${is58mm ? '15px' : '18px'} ${fontPrimary}`;
-    ctx.fillText(data.headerText || `Welcome to ${data.cafeName || 'Lamoge'}`, centerX, y);
+    const defaultWelcome = `${tr.welcome} ${data.cafeName || 'LAMOGE'}`;
+    const headerDisplay = (!data.headerText || data.headerText.startsWith('Welcome to') || data.headerText.startsWith('بەخێر بێن بۆ') || data.headerText.startsWith('أهلاً'))
+      ? defaultWelcome
+      : data.headerText;
+    ctx.fillText(headerDisplay, centerX, y);
     y += is58mm ? 22 : 26;
 
     if (data.address) {
@@ -368,7 +376,11 @@ export class ReceiptImageRenderer {
     y += is58mm ? 24 : 28;
 
     ctx.font = `500 ${is58mm ? '14px' : '17px'} ${fontPrimary}`;
-    ctx.fillText(data.footerText || tr.thanks, centerX, y);
+    const defaultThanks = tr.thanks;
+    const footerDisplay = (!data.footerText || data.footerText === 'Thank you for your visit!' || data.footerText === 'سەردانەکەت جێگەی دڵخۆشیمانە' || data.footerText === 'شكراً لزيارتكم' || data.footerText === 'سوپاس بۆ سەردانەکەت')
+      ? defaultThanks
+      : data.footerText;
+    ctx.fillText(footerDisplay, centerX, y);
     y += is58mm ? 24 : 28;
 
     ctx.font = `bold ${is58mm ? '11px' : '13px'} ${fontPrimary}`;

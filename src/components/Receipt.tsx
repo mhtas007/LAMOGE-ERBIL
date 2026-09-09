@@ -67,6 +67,7 @@ export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride }) => 
       dineIn: 'Dine In',
       takeaway: 'Takeaway',
       delivery: 'Delivery',
+      welcome: 'Welcome to',
       thanks: 'Thank you for your visit!',
       pleasure: 'The Pleasure of Taste',
     },
@@ -84,10 +85,11 @@ export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride }) => 
       total: 'کۆی کۆتایی',
       payment: 'شێوازی پارەدان - نەختینە',
       productsCount: 'ژمارەی بابەتەکان',
-      dineIn: 'Dine In',
-      takeaway: 'Takeaway',
-      delivery: 'Delivery',
-      thanks: 'سەردانەکەت جێگەی دڵخۆشیمانە',
+      dineIn: 'هۆڵ',
+      takeaway: 'سەفەری',
+      delivery: 'گەیاندن',
+      welcome: 'بەخێر بێن بۆ',
+      thanks: 'سوپاس بۆ سەردانەکەت',
       pleasure: 'چێژی تایبەتی تامی خۆش',
     },
     ar: {
@@ -104,9 +106,10 @@ export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride }) => 
       total: 'الإجمالي',
       payment: 'طريقة الدفع - نقدي',
       productsCount: 'عدد الأصناف',
-      dineIn: 'Dine In',
-      takeaway: 'Takeaway',
-      delivery: 'Delivery',
+      dineIn: 'صالة',
+      takeaway: 'سفري',
+      delivery: 'توصيل',
+      welcome: 'أهلاً وسهلاً بكم في',
       thanks: 'شكراً لزيارتكم',
       pleasure: 'متعة المذاق الرفيع',
     }
@@ -127,6 +130,7 @@ export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride }) => 
     dineIn: 'Dine In',
     takeaway: 'Takeaway',
     delivery: 'Delivery',
+    welcome: 'Welcome to',
     thanks: 'Thank you for your visit!',
     pleasure: 'The Pleasure of Taste',
   };
@@ -180,7 +184,9 @@ export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride }) => 
           {receiptSettings.cafeName || 'Lamoge - Branch 1'}
         </div>
         <div>
-          {receiptSettings.headerText || `Welcome to ${receiptSettings.cafeName || 'Lamoge'}`}
+          {(!receiptSettings.headerText || receiptSettings.headerText.startsWith('Welcome to') || receiptSettings.headerText.startsWith('بەخێر بێن بۆ') || receiptSettings.headerText.startsWith('أهلاً'))
+            ? `${tr.welcome} ${receiptSettings.cafeName || 'LAMOGE'}`
+            : receiptSettings.headerText}
         </div>
         {receiptSettings.address && (
           <div>{receiptSettings.address}</div>
@@ -301,7 +307,9 @@ export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride }) => 
           {tr.productsCount}: {totalItemCount}
         </div>
         <div className="text-xs">
-          {receiptSettings.footerText || tr.thanks}
+          {(!receiptSettings.footerText || receiptSettings.footerText === 'Thank you for your visit!' || receiptSettings.footerText === 'سەردانەکەت جێگەی دڵخۆشیمانە' || receiptSettings.footerText === 'شكراً لزيارتكم' || receiptSettings.footerText === 'سوپاس بۆ سەردانەکەت')
+            ? tr.thanks
+            : receiptSettings.footerText}
         </div>
         <div className="text-[10px] uppercase tracking-widest text-black/60 pt-1 font-bold">
           POWERED BY MAS MENU

@@ -58,7 +58,7 @@ export class ReceiptFormatter {
         discount: 'داشکاندن:',
         service: 'خزمەتگوزاری:',
         total: 'کۆی کۆتایی:',
-        thanks: 'سەردانەکەت جێگەی دڵخۆشیمانە',
+        thanks: 'سوپاس بۆ سەردانەکەت',
         dineIn: 'هۆڵ',
         takeaway: 'سەفەری',
         delivery: 'گەیاندن',
