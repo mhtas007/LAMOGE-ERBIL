@@ -368,12 +368,7 @@ export class ReceiptImageRenderer {
     y += 12;
 
     // --- 8. FOOTER ---
-    const totalItemCount = data.order.items.reduce((sum, it) => sum + it.quantity, 0);
-
     ctx.textAlign = 'center';
-    ctx.font = `bold ${is58mm ? '15px' : '18px'} ${fontPrimary}`;
-    ctx.fillText(`${tr.productsCount}: ${totalItemCount}`, centerX, y);
-    y += is58mm ? 24 : 28;
 
     ctx.font = `500 ${is58mm ? '14px' : '17px'} ${fontPrimary}`;
     const defaultThanks = tr.thanks;

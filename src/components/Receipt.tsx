@@ -301,11 +301,8 @@ export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride }) => 
         <div className="border-t-2 border-black my-2"></div>
       </div>
 
-      {/* 8. Products Count & Footer */}
+      {/* 8. Footer */}
       <div className="text-center text-xs space-y-1 mt-3 text-black">
-        <div className="font-semibold text-xs">
-          {tr.productsCount}: {totalItemCount}
-        </div>
         <div className="text-xs">
           {(!receiptSettings.footerText || receiptSettings.footerText === 'Thank you for your visit!' || receiptSettings.footerText === 'سەردانەکەت جێگەی دڵخۆشیمانە' || receiptSettings.footerText === 'شكراً لزيارتكم' || receiptSettings.footerText === 'سوپاس بۆ سەردانەکەت')
             ? tr.thanks
