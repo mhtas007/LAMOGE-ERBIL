@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { Settings as SettingsIcon, Store, Receipt as ReceiptIcon, Bell, Shield, Database, AlertTriangle, Download, Upload, Trash2, Printer, Send, Sparkles, X, Wifi, CheckCircle2, AlertCircle, Loader2, Server, FolderArchive, Laptop, Terminal, ExternalLink } from 'lucide-react';
+import { Settings as SettingsIcon, Store, Receipt as ReceiptIcon, Bell, Shield, Database, AlertTriangle, Download, Upload, Trash2, Printer, Send, Sparkles, X, Wifi, CheckCircle2, AlertCircle, Loader2, Server, FolderArchive, Laptop, Terminal, ExternalLink, Lock, Unlock, KeyRound, Eye, EyeOff } from 'lucide-react';
 import { Receipt } from '../components/Receipt';
 import { PrinterService } from '../services/printerService';
 
@@ -28,6 +28,23 @@ export const Settings: React.FC = () => {
   const [safetyExpenseText, setSafetyExpenseText] = useState('');
   const [safetySystemText, setSafetySystemText] = useState('');
   const [showPrinterSetup, setShowPrinterSetup] = useState(false);
+
+  // Server Tab Password Protection (Password: Mhtas0101$$$)
+  const [isServerUnlocked, setIsServerUnlocked] = useState(false);
+  const [serverPasswordInput, setServerPasswordInput] = useState('');
+  const [serverPasswordError, setServerPasswordError] = useState(false);
+  const [showServerPassword, setShowServerPassword] = useState(false);
+
+  const handleUnlockServer = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (serverPasswordInput === 'Mhtas0101$$$') {
+      setIsServerUnlocked(true);
+      setServerPasswordError(false);
+      setServerPasswordInput('');
+    } else {
+      setServerPasswordError(true);
+    }
+  };
 
   useEffect(() => {
     setFormData(receiptSettings);
@@ -632,7 +649,66 @@ export const Settings: React.FC = () => {
             </div>
           )}
 
-          {activeTab === 'server' && (
+          {activeTab === 'server' && !isServerUnlocked && (
+            <div className="max-w-md mx-auto my-12 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="bg-natural-bg border border-natural-border rounded-3xl p-8 shadow-sm text-center">
+                <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center mx-auto mb-5 border border-amber-500/20 shadow-sm">
+                  <Lock size={30} />
+                </div>
+                
+                <h2 className="text-xl font-bold text-natural-text mb-2">
+                  {isRtl ? 'بەشی سێرڤەر پارێزراوە بە تێپەڕەوشە' : 'Server Access Protected'}
+                </h2>
+                <p className="text-xs text-natural-text-secondary leading-relaxed mb-6">
+                  {isRtl
+                    ? 'تکایە تێپەڕەوشەی بەڕێوەبەر بنووسە بۆ بینین و داگرتنی فایلەکانی سێرڤەر.'
+                    : 'Please enter the admin password to unlock and download server files.'}
+                </p>
+
+                <form onSubmit={handleUnlockServer} className="space-y-4">
+                  <div className="relative">
+                    <input
+                      type={showServerPassword ? 'text' : 'password'}
+                      value={serverPasswordInput}
+                      onChange={(e) => {
+                        setServerPasswordInput(e.target.value);
+                        setServerPasswordError(false);
+                      }}
+                      placeholder={isRtl ? 'تێپەڕەوشە لێرە بنووسە...' : 'Enter password...'}
+                      autoFocus
+                      className={`w-full bg-natural-surface border ${
+                        serverPasswordError ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-500/20' : 'border-natural-border focus:border-natural-dark focus:ring-natural-dark/20'
+                      } rounded-xl py-3 px-10 text-center font-mono text-sm tracking-wider focus:outline-none focus:ring-2 transition-all shadow-sm`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowServerPassword(!showServerPassword)}
+                      className={`absolute inset-y-0 ${isRtl ? 'left-3' : 'right-3'} flex items-center text-natural-text-tertiary hover:text-natural-text cursor-pointer`}
+                    >
+                      {showServerPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+
+                  {serverPasswordError && (
+                    <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-rose-600 dark:text-rose-400 font-semibold flex items-center justify-center gap-2 animate-in fade-in">
+                      <AlertCircle size={14} />
+                      <span>{isRtl ? 'تێپەڕەوشە هەڵەیە! تکایە دووبارە هەوڵبدەرەوە.' : 'Incorrect password! Please try again.'}</span>
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    className="w-full bg-natural-dark hover:opacity-90 text-white py-3 rounded-xl font-bold text-sm transition-transform active:scale-95 shadow flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <KeyRound size={16} />
+                    <span>{isRtl ? 'کردنەوە و پیشاندان' : 'Unlock Access'}</span>
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'server' && isServerUnlocked && (
             <div className="max-w-3xl animate-in fade-in slide-in-from-bottom-2 duration-300 p-2 sm:p-4 space-y-8">
               {/* Header */}
               <div className="border-b border-natural-border/60 pb-6">
@@ -648,10 +724,21 @@ export const Settings: React.FC = () => {
                         : 'Download the server package to run on the cashier PC/laptop as the main base station for iPads and thermal printers.'}
                     </p>
                   </div>
-                  <span className="text-xs font-bold px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
-                    <CheckCircle2 size={15} />
-                    <span>{isRtl ? 'ئامادەکراوە بۆ گواستنەوە' : 'Ready for Transfer'}</span>
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
+                      <CheckCircle2 size={15} />
+                      <span>{isRtl ? 'ئامادەکراوە بۆ گواستنەوە' : 'Ready for Transfer'}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsServerUnlocked(false)}
+                      className="text-xs font-bold px-3 py-1.5 rounded-xl bg-natural-bg hover:bg-natural-border/60 text-natural-text-secondary border border-natural-border flex items-center gap-1.5 transition-colors cursor-pointer"
+                      title={isRtl ? 'قوفڵکردنەوە' : 'Lock'}
+                    >
+                      <Lock size={13} />
+                      <span>{isRtl ? 'داخستن' : 'Lock'}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
