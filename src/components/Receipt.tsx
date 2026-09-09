@@ -169,7 +169,7 @@ export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride }) => 
             src={receiptSettings.logo}
             alt="Logo"
             className="h-14 max-w-[140px] object-contain"
-            style={{ filter: 'grayscale(100%) contrast(250%) brightness(75%)' }}
+            style={{ filter: 'grayscale(100%)' }}
           />
         ) : (
           <div className="text-xl font-bold tracking-wider text-black">

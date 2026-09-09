@@ -163,37 +163,7 @@ export class ReceiptImageRenderer {
             drawW = (logoImg.width / logoImg.height) * drawH;
           }
 
-          // Pre-process logo to deep high-contrast solid black for thermal printing
-          const tempCanvas = document.createElement('canvas');
-          tempCanvas.width = Math.round(drawW);
-          tempCanvas.height = Math.round(drawH);
-          const tempCtx = tempCanvas.getContext('2d');
-          if (tempCtx) {
-            tempCtx.drawImage(logoImg, 0, 0, tempCanvas.width, tempCanvas.height);
-            const lImgData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-            const lPix = lImgData.data;
-            for (let i = 0; i < lPix.length; i += 4) {
-              const a = lPix[i + 3];
-              if (a > 20) {
-                const lum = lPix[i] * 0.299 + lPix[i + 1] * 0.587 + lPix[i + 2] * 0.114;
-                // Darken any logo shape to solid pitch black
-                if (lum < 230) {
-                  lPix[i] = 0;
-                  lPix[i + 1] = 0;
-                  lPix[i + 2] = 0;
-                  lPix[i + 3] = 255;
-                } else {
-                  lPix[i + 3] = 0;
-                }
-              } else {
-                lPix[i + 3] = 0;
-              }
-            }
-            tempCtx.putImageData(lImgData, 0, 0);
-            ctx.drawImage(tempCanvas, centerX - drawW / 2, y, drawW, drawH);
-          } else {
-            ctx.drawImage(logoImg, centerX - drawW / 2, y, drawW, drawH);
-          }
+          ctx.drawImage(logoImg, centerX - drawW / 2, y, drawW, drawH);
           y += drawH + (is58mm ? 12 : 16);
         }
       } catch (err) {
@@ -439,9 +409,9 @@ export class ReceiptImageRenderer {
         const b = pixels[pIdx + 2];
         const a = pixels[pIdx + 3];
 
-        // High-contrast black pixel detection for crystal clear thermal print
+        // Balanced natural black pixel detection for crisp, clean thermal print
         const lum = r * 0.299 + g * 0.587 + b * 0.114;
-        const isBlack = a > 25 && lum < 225;
+        const isBlack = a > 50 && lum < 205;
         if (isBlack) {
           const byteIdx = row * bytesWidth + Math.floor(col / 8);
           const bitIdx = 7 - (col % 8);
