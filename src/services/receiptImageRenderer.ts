@@ -233,42 +233,48 @@ export class ReceiptImageRenderer {
     };
 
     drawDashedLine(y);
-    y += 12;
+    y += 14;
 
-    const alignPos = isRtl ? rightX : leftX;
-    ctx.textAlign = isRtl ? 'right' : 'left';
-
-    // 1. Date (Label then Value)
-    ctx.font = `bold ${is58mm ? '15px' : '18px'} ${fontPrimary}`;
-    ctx.fillText(tr.date, alignPos, y);
-    y += is58mm ? 20 : 25;
-
+    const labelPos = isRtl ? rightX : leftX;
+    const valPos = isRtl ? leftX : rightX;
+    const labelAlign = isRtl ? 'right' : 'left';
+    const valAlign = isRtl ? 'left' : 'right';
+    const rowGap = is58mm ? 22 : 26;
     const valWeight = isRtl ? '500' : 'bold';
-    ctx.font = `${valWeight} ${is58mm ? '17px' : '22px'} ${fontPrimary}`;
-    ctx.fillText(formattedDateTime, alignPos, y);
-    y += is58mm ? 24 : 30;
 
-    // 2. Invoice / Order # (Label then Value)
+    // 1. Date
+    ctx.textAlign = labelAlign;
     ctx.font = `bold ${is58mm ? '15px' : '18px'} ${fontPrimary}`;
-    ctx.fillText(tr.orderNo, alignPos, y);
-    y += is58mm ? 20 : 25;
+    ctx.fillText(tr.date, labelPos, y);
+
+    ctx.textAlign = valAlign;
+    ctx.font = `${valWeight} ${is58mm ? '15px' : '19px'} ${fontPrimary}`;
+    ctx.fillText(formattedDateTime, valPos, y);
+    y += rowGap;
+
+    // 2. Invoice / Order #
+    ctx.textAlign = labelAlign;
+    ctx.font = `bold ${is58mm ? '15px' : '18px'} ${fontPrimary}`;
+    ctx.fillText(tr.orderNo, labelPos, y);
 
     const invoiceVal = data.order.invoiceCode || data.order.id.slice(0, 8).toUpperCase();
-    ctx.font = `bold ${is58mm ? '18px' : '23px'} ${fontPrimary}`;
-    ctx.fillText(invoiceVal, alignPos, y);
-    y += is58mm ? 24 : 30;
+    ctx.textAlign = valAlign;
+    ctx.font = `bold ${is58mm ? '16px' : '20px'} ${fontPrimary}`;
+    ctx.fillText(invoiceVal, valPos, y);
+    y += rowGap;
 
-    // 3. Order Type (Label then Value)
+    // 3. Order Type
+    ctx.textAlign = labelAlign;
     ctx.font = `bold ${is58mm ? '15px' : '18px'} ${fontPrimary}`;
-    ctx.fillText(tr.type, alignPos, y);
-    y += is58mm ? 20 : 25;
+    ctx.fillText(tr.type, labelPos, y);
 
     const orderTypeLabel = data.order.type === 'dine_in' ? tr.dineIn : data.order.type === 'takeaway' ? tr.takeaway : tr.delivery;
     const tableLabel = data.tableName || (data.order.tableId ? `${tr.table} ${data.order.tableId}` : '');
     const typeVal = `${orderTypeLabel} ${tableLabel ? `(${tableLabel})` : ''}`.trim();
-    ctx.font = `${valWeight} ${is58mm ? '17px' : '22px'} ${fontPrimary}`;
-    ctx.fillText(typeVal, alignPos, y);
-    y += is58mm ? 26 : 32;
+    ctx.textAlign = valAlign;
+    ctx.font = `${valWeight} ${is58mm ? '15px' : '19px'} ${fontPrimary}`;
+    ctx.fillText(typeVal, valPos, y);
+    y += rowGap + 4;
 
     // --- 4. TABLE HEADER ---
     drawSolidLine(y, 2);

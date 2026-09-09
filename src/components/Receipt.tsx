@@ -194,27 +194,27 @@ export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride }) => 
         )}
       </div>
 
-      {/* 3. Date & Order Meta (Stacked Vertically) */}
+      {/* 3. Date & Order Meta (Balanced Key-Value Rows) */}
       <div className="border-t border-dashed border-black/40 my-2"></div>
-      <div className="space-y-2 text-xs text-black mb-2" style={{ textAlign: isRtl ? 'right' : 'left' }}>
-        <div>
-          <div className="text-[11px] font-bold text-black/75">{tr.date}</div>
-          <div className="font-semibold text-xs text-black">{formattedDateTime}</div>
+      <div className="space-y-1.5 text-xs text-black mb-2">
+        <div className="flex justify-between items-center">
+          <span className="text-[11.5px] font-bold text-black/80">{tr.date}</span>
+          <span className="font-semibold text-xs text-black">{formattedDateTime}</span>
         </div>
-        <div>
-          <div className="text-[11px] font-bold text-black/75">{tr.orderNo}</div>
-          <div className="font-mono font-bold text-xs text-black">{displayOrder.invoiceCode || displayOrder.id.slice(0, 8).toUpperCase()}</div>
+        <div className="flex justify-between items-center">
+          <span className="text-[11.5px] font-bold text-black/80">{tr.orderNo}</span>
+          <span className="font-mono font-bold text-xs text-black">{displayOrder.invoiceCode || displayOrder.id.slice(0, 8).toUpperCase()}</span>
         </div>
-        <div>
-          <div className="text-[11px] font-bold text-black/75">{tr.type}</div>
-          <div className="font-semibold text-xs text-black">
+        <div className="flex justify-between items-center">
+          <span className="text-[11.5px] font-bold text-black/80">{tr.type}</span>
+          <span className="font-semibold text-xs text-black">
             {displayOrder.type === 'dine_in' ? tr.dineIn : displayOrder.type === 'takeaway' ? tr.takeaway : tr.delivery}
             {displayOrder.type === 'dine_in' && displayOrder.tableId && (
               <span className="mx-1">
                 ({tr.table} {tables?.find((t) => t.id === displayOrder.tableId)?.number || displayOrder.tableId})
               </span>
             )}
-          </div>
+          </span>
         </div>
       </div>
 
