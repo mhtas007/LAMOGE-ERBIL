@@ -36,25 +36,30 @@ export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride }) => 
 
   const formatReceiptDate = (date: Date) => {
     const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
+    const m = date.getMonth() + 1;
+    const d = date.getDate();
     let h = date.getHours();
     const min = String(date.getMinutes()).padStart(2, '0');
-    const sec = String(date.getSeconds()).padStart(2, '0');
-    const ampm = h >= 12 ? 'PM' : 'AM';
+    let period = '';
+    if (rLang === 'ku') {
+      period = h >= 12 ? 'ئێوارە' : 'بەیانی';
+    } else if (rLang === 'ar') {
+      period = h >= 12 ? 'مساءً' : 'صباحاً';
+    } else {
+      period = h >= 12 ? 'PM' : 'AM';
+    }
     h = h % 12 || 12;
-    const hStr = String(h).padStart(2, '0');
-    return `${y}/${m}/${d} ${hStr}:${min}:${sec} ${ampm}`;
+    return `${y}/${m}/${d} ${h}:${min} ${period}`;
   };
 
   const formattedDateTime = formatReceiptDate(dateObj);
 
   const tr = {
     en: {
-      printedAt: 'Printed At:',
-      orderNo: 'Check#',
+      date: 'Date:',
+      orderNo: 'Invoice #:',
       type: 'Type:',
-      table: 'Table:',
+      table: 'Table',
       item: 'Item',
       qty: 'Qty',
       price: 'Price',
@@ -63,7 +68,6 @@ export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride }) => 
       serviceCharge: 'Service',
       total: 'Total',
       payment: 'Payment - Cash',
-      productsCount: 'Products Count',
       dineIn: 'Dine In',
       takeaway: 'Takeaway',
       delivery: 'Delivery',
@@ -72,10 +76,10 @@ export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride }) => 
       pleasure: 'The Pleasure of Taste',
     },
     ku: {
-      printedAt: 'کاتی چاپکردن:',
-      orderNo: 'ژمارەی وەسڵ#',
+      date: 'بەروار:',
+      orderNo: 'ژمارەی پسوولە:',
       type: 'جۆر:',
-      table: 'مێز:',
+      table: 'مێزی',
       item: 'بابەت',
       qty: 'دانە',
       price: 'نرخ',
@@ -84,7 +88,6 @@ export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride }) => 
       serviceCharge: 'خزمەتگوزاری',
       total: 'کۆی کۆتایی',
       payment: 'شێوازی پارەدان - نەختینە',
-      productsCount: 'ژمارەی بابەتەکان',
       dineIn: 'هۆڵ',
       takeaway: 'سەفەری',
       delivery: 'گەیاندن',
@@ -93,10 +96,10 @@ export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride }) => 
       pleasure: 'چێژی تایبەتی تامی خۆش',
     },
     ar: {
-      printedAt: 'وقت الطباعة:',
-      orderNo: 'رقم الفاتورة#',
+      date: 'التاريخ:',
+      orderNo: 'رقم الفاتورة:',
       type: 'النوع:',
-      table: 'الطاولة:',
+      table: 'طاولة',
       item: 'الصنف',
       qty: 'الكمية',
       price: 'السعر',
@@ -105,7 +108,6 @@ export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride }) => 
       serviceCharge: 'رسوم الخدمة',
       total: 'الإجمالي',
       payment: 'طريقة الدفع - نقدي',
-      productsCount: 'عدد الأصناف',
       dineIn: 'صالة',
       takeaway: 'سفري',
       delivery: 'توصيل',
@@ -114,10 +116,10 @@ export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride }) => 
       pleasure: 'متعة المذاق الرفيع',
     }
   }[rLang] || {
-    printedAt: 'Printed At:',
-    orderNo: 'Check#',
+    date: 'Date:',
+    orderNo: 'Invoice #:',
     type: 'Type:',
-    table: 'Table:',
+    table: 'Table',
     item: 'Item',
     qty: 'Qty',
     price: 'Price',
@@ -126,7 +128,6 @@ export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride }) => 
     serviceCharge: 'Service',
     total: 'Total',
     payment: 'Payment - Cash',
-    productsCount: 'Products Count',
     dineIn: 'Dine In',
     takeaway: 'Takeaway',
     delivery: 'Delivery',
@@ -193,23 +194,27 @@ export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride }) => 
         )}
       </div>
 
-      {/* 3. Date & Order Meta */}
-      <div className="space-y-1 text-[11px] text-black mb-2">
-        <div className="text-center text-[10.5px] text-black/90">
-          {tr.printedAt} {formattedDateTime}
+      {/* 3. Date & Order Meta (Stacked Vertically) */}
+      <div className="border-t border-dashed border-black/40 my-2"></div>
+      <div className="space-y-2 text-xs text-black mb-2" style={{ textAlign: isRtl ? 'right' : 'left' }}>
+        <div>
+          <div className="text-[11px] font-bold text-black/75">{tr.date}</div>
+          <div className="font-semibold text-xs text-black">{formattedDateTime}</div>
         </div>
-        <div className="flex justify-between items-center text-xs pt-1">
-          <span className="font-semibold">
+        <div>
+          <div className="text-[11px] font-bold text-black/75">{tr.orderNo}</div>
+          <div className="font-mono font-bold text-xs text-black">{displayOrder.invoiceCode || displayOrder.id.slice(0, 8).toUpperCase()}</div>
+        </div>
+        <div>
+          <div className="text-[11px] font-bold text-black/75">{tr.type}</div>
+          <div className="font-semibold text-xs text-black">
             {displayOrder.type === 'dine_in' ? tr.dineIn : displayOrder.type === 'takeaway' ? tr.takeaway : tr.delivery}
             {displayOrder.type === 'dine_in' && displayOrder.tableId && (
-              <span className="ml-1">
+              <span className="mx-1">
                 ({tr.table} {tables?.find((t) => t.id === displayOrder.tableId)?.number || displayOrder.tableId})
               </span>
             )}
-          </span>
-          <span>
-            {tr.orderNo} {displayOrder.invoiceCode || displayOrder.id.slice(0, 8).toUpperCase()}
-          </span>
+          </div>
         </div>
       </div>
 

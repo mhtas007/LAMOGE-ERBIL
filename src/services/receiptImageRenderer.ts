@@ -26,17 +26,16 @@ export class ReceiptImageRenderer {
 
     const tr = {
       en: {
-        printedAt: 'Printed At:',
-        orderNo: 'Check#',
+        date: 'Date:',
+        orderNo: 'Invoice #:',
         type: 'Type:',
-        table: 'Table:',
+        table: 'Table',
         item: 'Item',
         qty: 'Qty',
         price: 'Price',
         discount: 'Discount:',
         serviceCharge: 'Service:',
         total: 'TOTAL:',
-        productsCount: 'Products Count',
         dineIn: 'Dine In',
         takeaway: 'Takeaway',
         delivery: 'Delivery',
@@ -45,17 +44,16 @@ export class ReceiptImageRenderer {
         pleasure: 'The Pleasure of Taste',
       },
       ku: {
-        printedAt: 'کاتی چاپکردن:',
-        orderNo: 'ژمارەی وەسڵ#',
+        date: 'بەروار:',
+        orderNo: 'ژمارەی پسوولە:',
         type: 'جۆر:',
-        table: 'مێز:',
+        table: 'مێزی',
         item: 'بابەت',
         qty: 'دانە',
         price: 'نرخ',
         discount: 'داشکاندن:',
         serviceCharge: 'خزمەتگوزاری:',
         total: 'کۆی کۆتایی:',
-        productsCount: 'ژمارەی بابەتەکان',
         dineIn: 'هۆڵ',
         takeaway: 'سەفەری',
         delivery: 'گەیاندن',
@@ -64,17 +62,16 @@ export class ReceiptImageRenderer {
         pleasure: 'چێژی تایبەتی تامی خۆش',
       },
       ar: {
-        printedAt: 'وقت الطباعة:',
-        orderNo: 'رقم الفاتورة#',
+        date: 'التاريخ:',
+        orderNo: 'رقم الفاتورة:',
         type: 'النوع:',
-        table: 'الطاولة:',
+        table: 'طاولة',
         item: 'الصنف',
         qty: 'الكمية',
         price: 'السعر',
         discount: 'الخصم:',
         serviceCharge: 'رسوم الخدمة:',
         total: 'الإجمالي:',
-        productsCount: 'عدد الأصناف',
         dineIn: 'صالة',
         takeaway: 'سفري',
         delivery: 'توصيل',
@@ -83,17 +80,16 @@ export class ReceiptImageRenderer {
         pleasure: 'متعة المذاق الرفيع',
       },
     }[lang] || {
-      printedAt: 'Printed At:',
-      orderNo: 'Check#',
+      date: 'Date:',
+      orderNo: 'Invoice #:',
       type: 'Type:',
-      table: 'Table:',
+      table: 'Table',
       item: 'Item',
       qty: 'Qty',
       price: 'Price',
       discount: 'Discount:',
       serviceCharge: 'Service:',
       total: 'TOTAL:',
-      productsCount: 'Products Count',
       dineIn: 'Dine In',
       takeaway: 'Takeaway',
       delivery: 'Delivery',
@@ -103,7 +99,7 @@ export class ReceiptImageRenderer {
     };
 
     // 1. Calculate dynamic height
-    let estimatedHeight = is58mm ? 420 : 520;
+    let estimatedHeight = is58mm ? 480 : 580;
     estimatedHeight += is58mm ? 120 : 160;
     if (data.address) estimatedHeight += 36;
     data.order.items.forEach((it) => {
@@ -195,23 +191,23 @@ export class ReceiptImageRenderer {
 
     y += 8;
 
-    // --- 3. DATE & TIME (20px - lighter for Kurdish/Arabic, bold for English) ---
+    // --- 3. METADATA SECTION (Stacked Vertically Under Each Other) ---
     const dateObj = new Date(data.order.createdAt);
     const dateY = dateObj.getFullYear();
-    const dateM = String(dateObj.getMonth() + 1).padStart(2, '0');
-    const dateD = String(dateObj.getDate()).padStart(2, '0');
+    const dateM = dateObj.getMonth() + 1;
+    const dateD = dateObj.getDate();
     let dateH = dateObj.getHours();
     const dateMin = String(dateObj.getMinutes()).padStart(2, '0');
-    const dateSec = String(dateObj.getSeconds()).padStart(2, '0');
-    const ampm = dateH >= 12 ? 'PM' : 'AM';
+    let period = '';
+    if (lang === 'ku') {
+      period = dateH >= 12 ? 'ئێوارە' : 'بەیانی';
+    } else if (lang === 'ar') {
+      period = dateH >= 12 ? 'مساءً' : 'صباحاً';
+    } else {
+      period = dateH >= 12 ? 'PM' : 'AM';
+    }
     dateH = dateH % 12 || 12;
-    const formattedDateTime = `${dateY}/${dateM}/${dateD} ${String(dateH).padStart(2, '0')}:${dateMin}:${dateSec} ${ampm}`;
-
-    const dateWeight = isRtl ? '500' : 'bold';
-    ctx.font = `${dateWeight} ${is58mm ? '16px' : '20px'} ${fontPrimary}`;
-    ctx.textAlign = 'center';
-    ctx.fillText(`${tr.printedAt} ${formattedDateTime}`, centerX, y);
-    y += is58mm ? 26 : 30;
+    const formattedDateTime = `${dateY}/${dateM}/${dateD} ${dateH}:${dateMin} ${period}`;
 
     const drawDashedLine = (curY: number) => {
       ctx.save();
@@ -239,22 +235,40 @@ export class ReceiptImageRenderer {
     drawDashedLine(y);
     y += 12;
 
+    const alignPos = isRtl ? rightX : leftX;
+    ctx.textAlign = isRtl ? 'right' : 'left';
+
+    // 1. Date (Label then Value)
+    ctx.font = `bold ${is58mm ? '15px' : '18px'} ${fontPrimary}`;
+    ctx.fillText(tr.date, alignPos, y);
+    y += is58mm ? 20 : 25;
+
+    const valWeight = isRtl ? '500' : 'bold';
+    ctx.font = `${valWeight} ${is58mm ? '17px' : '22px'} ${fontPrimary}`;
+    ctx.fillText(formattedDateTime, alignPos, y);
+    y += is58mm ? 24 : 30;
+
+    // 2. Invoice / Order # (Label then Value)
+    ctx.font = `bold ${is58mm ? '15px' : '18px'} ${fontPrimary}`;
+    ctx.fillText(tr.orderNo, alignPos, y);
+    y += is58mm ? 20 : 25;
+
+    const invoiceVal = data.order.invoiceCode || data.order.id.slice(0, 8).toUpperCase();
+    ctx.font = `bold ${is58mm ? '18px' : '23px'} ${fontPrimary}`;
+    ctx.fillText(invoiceVal, alignPos, y);
+    y += is58mm ? 24 : 30;
+
+    // 3. Order Type (Label then Value)
+    ctx.font = `bold ${is58mm ? '15px' : '18px'} ${fontPrimary}`;
+    ctx.fillText(tr.type, alignPos, y);
+    y += is58mm ? 20 : 25;
+
     const orderTypeLabel = data.order.type === 'dine_in' ? tr.dineIn : data.order.type === 'takeaway' ? tr.takeaway : tr.delivery;
     const tableLabel = data.tableName || (data.order.tableId ? `${tr.table} ${data.order.tableId}` : '');
-
-    const alignStart = isRtl ? 'right' : 'left';
-    const alignEnd = isRtl ? 'left' : 'right';
-    const posStart = isRtl ? rightX : leftX;
-    const posEnd = isRtl ? leftX : rightX;
-
-    const metaWeight = isRtl ? '600' : 'bold';
-    ctx.font = `${metaWeight} ${is58mm ? '16px' : '20px'} ${fontPrimary}`;
-    ctx.textAlign = alignStart;
-    ctx.fillText(`${orderTypeLabel} ${tableLabel ? `(${tableLabel})` : ''}`, posStart, y);
-
-    ctx.textAlign = alignEnd;
-    ctx.fillText(`${tr.orderNo} ${data.order.invoiceCode || data.order.id.slice(0, 8).toUpperCase()}`, posEnd, y);
-    y += is58mm ? 26 : 30;
+    const typeVal = `${orderTypeLabel} ${tableLabel ? `(${tableLabel})` : ''}`.trim();
+    ctx.font = `${valWeight} ${is58mm ? '17px' : '22px'} ${fontPrimary}`;
+    ctx.fillText(typeVal, alignPos, y);
+    y += is58mm ? 26 : 32;
 
     // --- 4. TABLE HEADER ---
     drawSolidLine(y, 2);
