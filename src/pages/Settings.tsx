@@ -230,10 +230,6 @@ export const Settings: React.FC = () => {
                   <input type="text" name="cafeName" value={formData.cafeName} onChange={handleChange} className="w-full bg-natural-surface border border-natural-border rounded-xl py-3 px-4 focus:outline-none focus:border-natural-dark focus:ring-2 focus:ring-natural-dark/20 transition-all shadow-sm" />
                 </div>
                 
-                <div>
-                  <label className="block text-sm font-bold text-natural-text mb-2">Phone Number</label>
-                  <input type="text" name="phone" value={formData.phone} onChange={handleChange} className="w-full bg-natural-surface border border-natural-border rounded-xl py-3 px-4 focus:outline-none focus:border-natural-dark focus:ring-2 focus:ring-natural-dark/20 transition-all shadow-sm" />
-                </div>
 
                 <div>
                   <label className="block text-sm font-bold text-natural-text mb-2">{t('address')}</label>

@@ -185,9 +185,6 @@ export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride }) => 
         {receiptSettings.address && (
           <div>{receiptSettings.address}</div>
         )}
-        {receiptSettings.phone && (
-          <div>Tel: {receiptSettings.phone}</div>
-        )}
       </div>
 
       {/* 3. Date & Order Meta */}

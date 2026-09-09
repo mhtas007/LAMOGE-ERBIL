@@ -102,7 +102,6 @@ export class ReceiptImageRenderer {
     let estimatedHeight = is58mm ? 420 : 520;
     estimatedHeight += is58mm ? 120 : 160;
     if (data.address) estimatedHeight += 36;
-    if (data.phone) estimatedHeight += 28;
     data.order.items.forEach((it) => {
       estimatedHeight += is58mm ? 36 : 46;
       if (it.selectedAddons && it.selectedAddons.length > 0) {
@@ -183,12 +182,6 @@ export class ReceiptImageRenderer {
     if (data.address) {
       ctx.font = `400 ${is58mm ? '14px' : '17px'} ${fontPrimary}`;
       ctx.fillText(data.address, centerX, y);
-      y += is58mm ? 20 : 24;
-    }
-
-    if (data.phone) {
-      ctx.font = `400 ${is58mm ? '14px' : '17px'} ${fontPrimary}`;
-      ctx.fillText(`Tel: ${data.phone}`, centerX, y);
       y += is58mm ? 20 : 24;
     }
 
