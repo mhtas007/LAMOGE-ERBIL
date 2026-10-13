@@ -6,14 +6,24 @@
  * 3. ESC/POS Micro-Bridge (LAN TCP socket to Port 9100 for raw thermal printers)
  * 4. Star Micronics WebPRNT
  *
- * Implements strict job lifecycle, duplicate prevention, and actionable error diagnostics.
+ * Implements strict job lifecycle, duplicate prevention, device detection, and actionable error diagnostics.
  */
 import { printerConfigService, PrinterConfig } from './printerConfigService';
 import { ReceiptFormatter, FormattedReceiptData } from './receiptFormatter';
 import { ReceiptImageRenderer } from './receiptImageRenderer';
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
 
-export type PrintJobStatus = 'idle' | 'pending' | 'sending' | 'printed' | 'failed';
+export type PrintJobStatus = 'idle' | 'pending' | 'sending' | 'printed' | 'failed' | 'unknown';
+
+export interface PrintJobState {
+  jobId: string;
+  status: PrintJobStatus;
+  startedAt: number;
+  completedAt?: number;
+  error?: string;
+  protocol: string;
+  printerIp: string;
+}
 
 export interface PrintResult {
   success: boolean;
@@ -24,10 +34,289 @@ export interface PrintResult {
   protocol: string;
 }
 
+export interface PrinterCapabilities {
+  protocol: string;
+  supportsRaster: boolean;
+  supportsKurdish: boolean;
+  supportsArabic: boolean;
+  supportsCashDrawer: boolean;
+  supportsAutoCut: boolean;
+  supportsDirectIpad: boolean;
+  requiresPrintServer: boolean;
+  paperWidths: ('58mm' | '80mm')[];
+  description: string;
+}
+
+export interface DeviceContext {
+  isIPad: boolean;
+  isIOS: boolean;
+  isSafari: boolean;
+  isChrome: boolean;
+  isDesktop: boolean;
+  isNativeCapacitor: boolean;
+  isHttps: boolean;
+  platformName: string;
+  recommendedProtocol: 'browser_airprint' | 'epson_epos' | 'raw_escpos_bridge';
+}
+
 export class PrinterService {
   private static isJobLocked = false;
   private static activeJobId: string | null = null;
   private static lastJobTimestamp = 0;
+  private static jobHistory = new Map<
+    string,
+    { jobState: PrintJobState; payload: FormattedReceiptData; config?: Partial<PrinterConfig> }
+  >();
+
+  /**
+   * Initializes printer subsystem and real-time settings synchronization
+   */
+  public static async initialize(config?: Partial<PrinterConfig>): Promise<void> {
+    printerConfigService.initRealtimeListener();
+    if (config) {
+      await printerConfigService.savePrinterConfig(config);
+    }
+  }
+
+  /**
+   * Device and browser environment detection (identifies iPad Safari, desktop Chrome, etc.)
+   */
+  public static detectDeviceContext(): DeviceContext {
+    const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+    const isTouchMac =
+      typeof navigator !== 'undefined' &&
+      navigator.platform === 'MacIntel' &&
+      navigator.maxTouchPoints > 1;
+    const isIPad = /iPad/.test(ua) || isTouchMac;
+    const isIOS = /iPhone|iPad|iPod/.test(ua) || isTouchMac;
+    const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+    const isChrome = /CriOS|Chrome/.test(ua);
+    const isNativeCapacitor = Capacitor.isNativePlatform();
+    const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
+    const isDesktop = !isIOS && !/Android|Mobile/.test(ua);
+
+    let recommendedProtocol: 'browser_airprint' | 'epson_epos' | 'raw_escpos_bridge' =
+      'browser_airprint';
+    if (isNativeCapacitor) {
+      recommendedProtocol = 'epson_epos';
+    } else if (isIPad) {
+      // 100% Computer-free native printing on iPad Safari
+      recommendedProtocol = 'browser_airprint';
+    } else if (isDesktop) {
+      recommendedProtocol = 'raw_escpos_bridge';
+    }
+
+    let platformName = 'Desktop Browser';
+    if (isIPad) platformName = isSafari ? 'iPad Safari' : 'iPad Chrome';
+    else if (isIOS) platformName = 'iOS Device';
+    else if (isNativeCapacitor) platformName = 'Native Mobile App';
+
+    return {
+      isIPad,
+      isIOS,
+      isSafari,
+      isChrome,
+      isDesktop,
+      isNativeCapacitor,
+      isHttps,
+      platformName,
+      recommendedProtocol,
+    };
+  }
+
+  /**
+   * Probes network printer reachability and measures round-trip latency
+   */
+  public static async checkConnection(
+    targetIp?: string,
+    port?: number,
+    overrideProtocol?: string
+  ): Promise<{ reachable: boolean; latencyMs?: number; error?: string; protocol: string }> {
+    const config = await printerConfigService.getPrinterConfig();
+    const protocol = overrideProtocol || config.protocol || 'browser_airprint';
+    const ip = (targetIp || config.printerIp || '').trim();
+    const targetPort = port || config.port || (protocol === 'raw_escpos_bridge' ? 3001 : 80);
+    const startTime = Date.now();
+
+    if (protocol === 'browser_airprint') {
+      return {
+        reachable: true,
+        latencyMs: 0,
+        protocol: 'browser_airprint',
+      };
+    }
+
+    if (!ip && protocol !== 'raw_escpos_bridge') {
+      return {
+        reachable: false,
+        error: 'Printer IP address is not configured.',
+        protocol,
+      };
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4000);
+
+    try {
+      if (protocol === 'raw_escpos_bridge') {
+        const bridgeUrl = (config.bridgeUrl || '').trim();
+        const endpoint = bridgeUrl
+          ? `${bridgeUrl.replace(/\/+$/, '')}/api/print`
+          : '/api/print';
+
+        const res = await fetch(endpoint, {
+          method: 'GET',
+          signal: controller.signal,
+        });
+        clearTimeout(timer);
+        const latencyMs = Date.now() - startTime;
+        if (res.ok) {
+          return { reachable: true, latencyMs, protocol };
+        }
+        return { reachable: false, latencyMs, error: `Bridge returned status ${res.status}`, protocol };
+      }
+
+      // Epson ePOS probe
+      if (Capacitor.isNativePlatform()) {
+        const capRes = await CapacitorHttp.get({
+          url: `http://${ip}:${targetPort}/cgi-bin/epos/service.cgi?devid=local_printer`,
+          connectTimeout: 3000,
+          readTimeout: 3000,
+        });
+        clearTimeout(timer);
+        const latencyMs = Date.now() - startTime;
+        return { reachable: capRes.status === 200, latencyMs, protocol };
+      }
+
+      const res = await fetch(
+        `http://${ip}:${targetPort}/cgi-bin/epos/service.cgi?devid=local_printer`,
+        {
+          method: 'GET',
+          signal: controller.signal,
+        }
+      );
+      clearTimeout(timer);
+      const latencyMs = Date.now() - startTime;
+      return { reachable: res.ok || res.status === 200, latencyMs, protocol };
+    } catch (err: any) {
+      clearTimeout(timer);
+      const latencyMs = Date.now() - startTime;
+
+      if (err.name === 'AbortError' || err.message?.includes('aborted')) {
+        return { reachable: false, latencyMs, error: 'Connection timed out (4000ms)', protocol };
+      }
+
+      if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+        return {
+          reachable: false,
+          latencyMs,
+          error: `Safari HTTPS Mixed Content: direct LAN access to http://${ip} is blocked by WebKit security. Select Apple AirPrint or use the Local Base Server.`,
+          protocol,
+        };
+      }
+
+      return { reachable: false, latencyMs, error: err.message || 'Host unreachable', protocol };
+    }
+  }
+
+  /**
+   * Retrieves operational capabilities based on protocol and hardware
+   */
+  public static getPrinterCapabilities(protocolOverride?: string): PrinterCapabilities {
+    const protocol = protocolOverride || 'browser_airprint';
+
+    switch (protocol) {
+      case 'browser_airprint':
+        return {
+          protocol: 'browser_airprint',
+          supportsRaster: true,
+          supportsKurdish: true,
+          supportsArabic: true,
+          supportsCashDrawer: false,
+          supportsAutoCut: true,
+          supportsDirectIpad: true,
+          requiresPrintServer: false,
+          paperWidths: ['80mm', '58mm'],
+          description:
+            'Apple AirPrint: 100% computer-free printing directly from iPad Safari to compatible thermal printers.',
+        };
+      case 'epson_epos':
+        return {
+          protocol: 'epson_epos',
+          supportsRaster: true,
+          supportsKurdish: true,
+          supportsArabic: true,
+          supportsCashDrawer: true,
+          supportsAutoCut: true,
+          supportsDirectIpad: true,
+          requiresPrintServer: false,
+          paperWidths: ['80mm', '58mm'],
+          description:
+            'Epson ePOS-Print: Direct XML over LAN (Port 80/8008 or HTTPS). Compatible with TM-m30, TM-T88VI, and TM-T20III.',
+        };
+      case 'raw_escpos_bridge':
+        return {
+          protocol: 'raw_escpos_bridge',
+          supportsRaster: true,
+          supportsKurdish: true,
+          supportsArabic: true,
+          supportsCashDrawer: true,
+          supportsAutoCut: true,
+          supportsDirectIpad: true,
+          requiresPrintServer: true,
+          paperWidths: ['80mm', '58mm'],
+          description:
+            'Main Base Server Bridge: High-speed TCP socket on Port 9100 with canvas monochrome raster graphics.',
+        };
+      case 'star_webprnt':
+        return {
+          protocol: 'star_webprnt',
+          supportsRaster: true,
+          supportsKurdish: true,
+          supportsArabic: true,
+          supportsCashDrawer: true,
+          supportsAutoCut: true,
+          supportsDirectIpad: true,
+          requiresPrintServer: false,
+          paperWidths: ['80mm', '58mm'],
+          description:
+            'Star Micronics WebPRNT: Direct HTTP XML for Star TSP654II / mC-Print3.',
+        };
+      default:
+        return {
+          protocol: 'browser_airprint',
+          supportsRaster: true,
+          supportsKurdish: true,
+          supportsArabic: true,
+          supportsCashDrawer: false,
+          supportsAutoCut: true,
+          supportsDirectIpad: true,
+          requiresPrintServer: false,
+          paperWidths: ['80mm', '58mm'],
+          description: 'Standard browser printing.',
+        };
+    }
+  }
+
+  /**
+   * Retrieves the current lifecycle state of a specific print job
+   */
+  public static getPrintStatus(jobId: string): PrintJobState | undefined {
+    return this.jobHistory.get(jobId)?.jobState;
+  }
+
+  /**
+   * Safely retries a previously submitted print job without altering the completed sale
+   */
+  public static async retryPrint(jobId: string): Promise<PrintResult> {
+    const entry = this.jobHistory.get(jobId);
+    if (!entry) {
+      throw new Error(`Print job ${jobId} not found in history for retry.`);
+    }
+    entry.jobState.status = 'pending';
+    entry.jobState.error = undefined;
+    return this.printReceipt(entry.payload, entry.config);
+  }
 
   /**
    * Validates receipt payload before attempting any network communication
@@ -72,31 +361,53 @@ export class PrinterService {
     const jobId = this.generateJobId(data);
     this.activeJobId = jobId;
 
+    const config: PrinterConfig = {
+      ...(await printerConfigService.getPrinterConfig()),
+      ...overrideConfig,
+    };
+
+    const protocol = config.protocol || 'browser_airprint';
+    const targetIp = (config.printerIp || '').trim();
+
+    // Register job in history
+    this.jobHistory.set(jobId, {
+      jobState: {
+        jobId,
+        status: 'sending',
+        startedAt: startTime,
+        protocol,
+        printerIp: targetIp,
+      },
+      payload: data,
+      config: overrideConfig,
+    });
+
     try {
-      const config: PrinterConfig = {
-        ...(await printerConfigService.getPrinterConfig()),
-        ...overrideConfig,
-      };
-
-      const protocol = config.protocol || 'browser_airprint';
-
       // --- PROTOCOL 1: NATIVE BROWSER / APPLE AIRPRINT ---
       // Direct iPad printing without any PC or print bridge
       if (protocol === 'browser_airprint') {
         const result = await this.printViaAirPrint(jobId, startTime);
+        const historyEntry = this.jobHistory.get(jobId);
+        if (historyEntry) {
+          historyEntry.jobState.status = 'printed';
+          historyEntry.jobState.completedAt = Date.now();
+        }
         return result;
       }
 
       // Check required IP address for network protocols
-      const targetIp = (config.printerIp || '').trim();
       const bridgeUrl = (config.bridgeUrl || '').trim();
 
       if (protocol === 'raw_escpos_bridge') {
         if (!targetIp && !bridgeUrl) {
-          throw new Error('Bridge URL or Printer IP is required for ESC/POS Bridge mode. Configure in Settings.');
+          throw new Error(
+            'Bridge URL or Printer IP is required for ESC/POS Bridge mode. Configure in Settings.'
+          );
         }
       } else if (!targetIp) {
-        throw new Error('Printer IP address is not configured. Please enter the Static IP in Settings or select Apple AirPrint.');
+        throw new Error(
+          'Printer IP address is not configured. Please enter the Static IP in Settings or select Apple AirPrint.'
+        );
       }
 
       const port = config.port || (protocol === 'raw_escpos_bridge' ? 3001 : 80);
@@ -120,6 +431,12 @@ export class PrinterService {
         const durationMs = Date.now() - startTime;
         console.log(`[PrinterService] Print job ${jobId} confirmed via ${protocol} in ${durationMs}ms`);
 
+        const historyEntry = this.jobHistory.get(jobId);
+        if (historyEntry) {
+          historyEntry.jobState.status = 'printed';
+          historyEntry.jobState.completedAt = Date.now();
+        }
+
         return {
           success: true,
           message: `Receipt printed successfully (${protocol})`,
@@ -134,6 +451,11 @@ export class PrinterService {
       }
     } catch (error: any) {
       console.warn(`[PrinterService] Print job ${jobId} failed:`, error.message);
+      const historyEntry = this.jobHistory.get(jobId);
+      if (historyEntry) {
+        historyEntry.jobState.status = 'failed';
+        historyEntry.jobState.error = error.message;
+      }
       throw error;
     } finally {
       this.isJobLocked = false;
@@ -246,7 +568,10 @@ export class PrinterService {
     } catch (fetchErr: any) {
       // If a bridge URL is available, gracefully attempt fallback via bridge
       if (bridgeUrl || this.isLocalEnvironment()) {
-        console.warn('[PrinterService] Epson direct HTTP failed, attempting fallback to bridge:', fetchErr.message);
+        console.warn(
+          '[PrinterService] Epson direct HTTP failed, attempting fallback to bridge:',
+          fetchErr.message
+        );
         try {
           await this.sendToEscPosBridge(ip, 9100, bridgeUrl, data, config, signal);
           return;
@@ -266,9 +591,9 @@ export class PrinterService {
         if (isHttps) {
           throw new Error(
             `[iOS Safari Security] Direct HTTP printing to ${ip} is blocked by Apple Mixed Content security when running from an HTTPS web address.\n\n` +
-            `ڕێگەچارە:\n` +
-            `1. لە ڕێکخستنەکاندا پرۆتۆکۆڵ بکە بە 'Apple AirPrint' بۆ چاپی ڕاستەوخۆ بێ کۆمپیوتەر.\n` +
-            `2. یان سێرڤەری پرینتی ناوخۆیی (Main Base Server) بەکاربهێنە.`
+              `ڕێگەچارە:\n` +
+              `1. لە ڕێکخستنەکاندا پرۆتۆکۆڵ بکە بە 'Apple AirPrint' بۆ چاپی ڕاستەوخۆ بێ کۆمپیوتەر.\n` +
+              `2. یان سێرڤەری پرینتی ناوخۆیی (Main Base Server) بەکاربهێنە.`
           );
         }
 
@@ -297,7 +622,6 @@ export class PrinterService {
     config: PrinterConfig,
     signal: AbortSignal
   ): Promise<void> {
-    // Determine candidate endpoints without blindly assuming window.location.hostname
     const candidateEndpoints: string[] = [];
 
     if (bridgeUrl && bridgeUrl.trim() !== '') {
@@ -306,15 +630,14 @@ export class PrinterService {
       candidateEndpoints.push(fullEndpoint);
     }
 
-    // If served from local network server (e.g. Node / Vite running on the cafe LAN PC)
     if (typeof window !== 'undefined') {
       const origin = window.location.origin;
-      const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const isLocalHost =
+        window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
       const isLanIp = /^192\.168\.|^10\.|^172\.(1[6-9]|2\d|3[01])\./.test(window.location.hostname);
 
       if (isLocalHost || isLanIp) {
         candidateEndpoints.push(`${origin}/api/print`);
-        // Port 3001 standalone bridge on same host
         candidateEndpoints.push(`http://${window.location.hostname}:3001/api/print`);
       }
     }
@@ -325,7 +648,6 @@ export class PrinterService {
       );
     }
 
-    // Render monochrome raster for Kurdish, Arabic, and Logo
     let rasterPayload: any = null;
     try {
       rasterPayload = await ReceiptImageRenderer.renderToRaster(

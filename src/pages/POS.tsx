@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
+  RotateCcw,
 } from "lucide-react";
 import { Receipt } from "../components/Receipt";
 import { PrinterService } from "../services/printerService";
@@ -71,6 +72,7 @@ export const POS: React.FC = () => {
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [isSilentPrinting, setIsSilentPrinting] = useState(false);
   const [isProcessingCheckout, setIsProcessingCheckout] = useState(false);
+  const [printError, setPrintError] = useState<string | null>(null);
 
   const showToast = (text: string, type: 'success' | 'error' = 'success') => {
     setToastMessage({ text, type });
@@ -264,6 +266,7 @@ export const POS: React.FC = () => {
         isReprint,
       });
 
+      setPrintError(null);
       showToast(
         isRtl ? `وەسڵ بە سەرکەوتوویی چاپکرا لە پرینتەر (${res.printerIp})` : `Receipt printed silently (${res.durationMs}ms)`,
         'success'
@@ -273,15 +276,12 @@ export const POS: React.FC = () => {
       if (!isReprint) {
         setTimeout(() => {
           handleCloseReceipt();
-        }, 500);
+        }, 600);
       }
     } catch (err: any) {
       console.warn('[POS Checkout] Network print exception:', err.message);
+      setPrintError(err.message);
       showToast(err.message, 'error');
-      // Automatic fallback to native iPad AirPrint / Browser printing
-      setTimeout(() => {
-        window.print();
-      }, 400);
     } finally {
       setIsSilentPrinting(false);
     }
@@ -1023,23 +1023,36 @@ export const POS: React.FC = () => {
                 </button>
               </div>
 
-              {receiptSettings?.printerIp && 
-               receiptSettings.printerIp.trim() !== '' && 
-               receiptSettings.printerIp.trim() !== '192.168.1.100' && (
+              {printError && (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-xs text-amber-700 dark:text-amber-300 flex items-start gap-2 text-start">
+                  <AlertCircle size={16} className="shrink-0 mt-0.5 text-amber-500" />
+                  <div className="flex-1">
+                    <p className="font-bold text-xs">{isRtl ? 'ئاگاداری پەیوەندی پرینتەر' : 'Printer Connection Alert'}</p>
+                    <p className="text-[11px] mt-0.5 leading-relaxed opacity-90">{printError}</p>
+                  </div>
+                </div>
+              )}
+
+              {Boolean(receiptSettings?.printerIp?.trim() || receiptSettings?.bridgeUrl?.trim()) && (
                 <button
-                  onClick={() => performSilentPrint(lastOrder)}
+                  onClick={() => performSilentPrint(lastOrder, false)}
                   disabled={isSilentPrinting}
-                  className="w-full bg-natural-surface hover:bg-natural-bg border border-natural-border text-natural-text py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  className="w-full bg-natural-surface hover:bg-natural-bg border border-natural-border text-natural-text py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 active:scale-95"
                 >
                   {isSilentPrinting ? (
                     <>
                       <Loader2 size={14} className="animate-spin text-natural-accent" />
                       <span>{isRtl ? 'دەنێردرێت بۆ پرینتەری نێتۆرک...' : 'Sending to network printer...'}</span>
                     </>
+                  ) : printError ? (
+                    <>
+                      <RotateCcw size={14} className="text-amber-500" />
+                      <span className="font-bold">{isRtl ? 'دووبارە هەوڵدانەوەی چاپی نێتۆرک (Retry)' : 'Retry Network Print'}</span>
+                    </>
                   ) : (
                     <>
                       <Wifi size={14} className="text-emerald-500" />
-                      <span>{isRtl ? `چاپی نێتۆرک (${receiptSettings.printerIp})` : `Network IP Print (${receiptSettings.printerIp})`}</span>
+                      <span>{isRtl ? `چاپی نێتۆرک (${receiptSettings.printerIp || 'Bridge'})` : `Network IP Print (${receiptSettings.printerIp || 'Bridge'})`}</span>
                     </>
                   )}
                 </button>
