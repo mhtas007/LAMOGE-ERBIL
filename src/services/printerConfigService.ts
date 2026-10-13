@@ -8,7 +8,8 @@ import { db } from '../firebase';
 export interface PrinterConfig {
   printerIp: string;
   port: number;
-  protocol: 'epson_epos' | 'star_webprnt' | 'raw_escpos_bridge';
+  bridgeUrl?: string;
+  protocol: 'browser_airprint' | 'epson_epos' | 'star_webprnt' | 'raw_escpos_bridge';
   paperWidth: '80mm' | '58mm';
   autoCut: boolean;
   openCashDrawer: boolean;
@@ -19,12 +20,13 @@ export interface PrinterConfig {
 export const DEFAULT_PRINTER_CONFIG: PrinterConfig = {
   printerIp: '',
   port: 80,
-  protocol: 'epson_epos',
+  bridgeUrl: '',
+  protocol: 'browser_airprint',
   paperWidth: '80mm',
   autoCut: true,
   openCashDrawer: false,
-  timeoutMs: 5000,
-  silentPrint: true,
+  timeoutMs: 6000,
+  silentPrint: false,
 };
 
 class PrinterConfigService {
@@ -52,12 +54,13 @@ class PrinterConfigService {
             this.cachedConfig = {
               printerIp: (data.printer_ip || data.printerIp || '').trim(),
               port: Number(data.printer_port || data.port) || (data.printer_protocol === 'raw_escpos_bridge' ? 3001 : 80),
-              protocol: data.printer_protocol || data.protocol || 'epson_epos',
+              bridgeUrl: (data.bridge_url || data.bridgeUrl || '').trim(),
+              protocol: data.printer_protocol || data.protocol || 'browser_airprint',
               paperWidth: data.paper_width || data.paperWidth || '80mm',
               autoCut: data.auto_cut !== false && data.autoCut !== false,
               openCashDrawer: Boolean(data.open_cash_drawer || data.openCashDrawer),
-              timeoutMs: Number(data.timeout_ms || data.timeoutMs) || 5000,
-              silentPrint: data.silent_print !== false && data.silentPrint !== false,
+              timeoutMs: Number(data.timeout_ms || data.timeoutMs) || 6000,
+              silentPrint: Boolean(data.silent_print ?? data.silentPrint ?? false),
             };
             this.isInitialized = true;
             console.log('[PrinterConfig] Real-time cache updated from cafe_config:', this.cachedConfig);
@@ -96,7 +99,7 @@ class PrinterConfigService {
    * @param forceRefresh - If true, bypasses the memory cache.
    */
   public async getPrinterConfig(forceRefresh = false): Promise<PrinterConfig> {
-    if (this.isInitialized && !forceRefresh && this.cachedConfig.printerIp) {
+    if (this.isInitialized && !forceRefresh && (this.cachedConfig.printerIp || this.cachedConfig.bridgeUrl)) {
       return this.cachedConfig;
     }
 
@@ -110,12 +113,13 @@ class PrinterConfigService {
         this.cachedConfig = {
           printerIp: (data.printer_ip || data.printerIp || '').trim(),
           port: Number(data.printer_port || data.port) || (data.printer_protocol === 'raw_escpos_bridge' ? 3001 : 80),
-          protocol: data.printer_protocol || data.protocol || 'epson_epos',
+          bridgeUrl: (data.bridge_url || data.bridgeUrl || '').trim(),
+          protocol: data.printer_protocol || data.protocol || 'browser_airprint',
           paperWidth: data.paper_width || data.paperWidth || '80mm',
           autoCut: data.auto_cut !== false && data.autoCut !== false,
           openCashDrawer: Boolean(data.open_cash_drawer || data.openCashDrawer),
-          timeoutMs: Number(data.timeout_ms || data.timeoutMs) || 5000,
-          silentPrint: data.silent_print !== false && data.silentPrint !== false,
+          timeoutMs: Number(data.timeout_ms || data.timeoutMs) || 6000,
+          silentPrint: Boolean(data.silent_print ?? data.silentPrint ?? false),
         };
       } else {
         // Fallback check to `settings/receipt` for backwards compatibility
@@ -127,6 +131,7 @@ class PrinterConfigService {
             this.cachedConfig.printerIp = rData.printerIp.trim();
             if (rData.printerProtocol) this.cachedConfig.protocol = rData.printerProtocol;
             if (rData.printerPort) this.cachedConfig.port = Number(rData.printerPort);
+            if (rData.bridgeUrl) this.cachedConfig.bridgeUrl = rData.bridgeUrl.trim();
             if (rData.paperWidth) this.cachedConfig.paperWidth = rData.paperWidth;
           }
         }
@@ -153,12 +158,13 @@ class PrinterConfigService {
     this.cachedConfig = {
       printerIp: newConfig.printerIp !== undefined ? (newConfig.printerIp || '').trim() : (this.cachedConfig.printerIp || '').trim(),
       port: safePort,
-      protocol: newConfig.protocol || this.cachedConfig.protocol || 'epson_epos',
+      bridgeUrl: newConfig.bridgeUrl !== undefined ? (newConfig.bridgeUrl || '').trim() : (this.cachedConfig.bridgeUrl || '').trim(),
+      protocol: newConfig.protocol || this.cachedConfig.protocol || 'browser_airprint',
       paperWidth: newConfig.paperWidth || this.cachedConfig.paperWidth || '80mm',
       autoCut: newConfig.autoCut !== undefined ? Boolean(newConfig.autoCut) : (this.cachedConfig.autoCut !== false),
       openCashDrawer: newConfig.openCashDrawer !== undefined ? Boolean(newConfig.openCashDrawer) : Boolean(this.cachedConfig.openCashDrawer),
-      timeoutMs: newConfig.timeoutMs !== undefined && !isNaN(Number(newConfig.timeoutMs)) ? Number(newConfig.timeoutMs) : (this.cachedConfig.timeoutMs || 5000),
-      silentPrint: newConfig.silentPrint !== undefined ? Boolean(newConfig.silentPrint) : (this.cachedConfig.silentPrint !== false),
+      timeoutMs: newConfig.timeoutMs !== undefined && !isNaN(Number(newConfig.timeoutMs)) ? Number(newConfig.timeoutMs) : (this.cachedConfig.timeoutMs || 6000),
+      silentPrint: newConfig.silentPrint !== undefined ? Boolean(newConfig.silentPrint) : Boolean(this.cachedConfig.silentPrint),
     };
     this.isInitialized = true;
     this.notifyListeners();
@@ -166,12 +172,13 @@ class PrinterConfigService {
     const firestoreData: Record<string, any> = {
       printer_ip: this.cachedConfig.printerIp || '',
       printer_port: Number(this.cachedConfig.port) || 80,
-      printer_protocol: this.cachedConfig.protocol || 'epson_epos',
+      bridge_url: this.cachedConfig.bridgeUrl || '',
+      printer_protocol: this.cachedConfig.protocol || 'browser_airprint',
       paper_width: this.cachedConfig.paperWidth || '80mm',
       auto_cut: this.cachedConfig.autoCut !== false,
       open_cash_drawer: Boolean(this.cachedConfig.openCashDrawer),
-      timeout_ms: Number(this.cachedConfig.timeoutMs) || 5000,
-      silent_print: this.cachedConfig.silentPrint !== false,
+      timeout_ms: Number(this.cachedConfig.timeoutMs) || 6000,
+      silent_print: Boolean(this.cachedConfig.silentPrint),
       updated_at: new Date().toISOString(),
     };
 
@@ -183,9 +190,10 @@ class PrinterConfigService {
         {
           printerIp: this.cachedConfig.printerIp || '',
           printerPort: Number(this.cachedConfig.port) || 80,
-          printerProtocol: this.cachedConfig.protocol || 'epson_epos',
+          bridgeUrl: this.cachedConfig.bridgeUrl || '',
+          printerProtocol: this.cachedConfig.protocol || 'browser_airprint',
           paperWidth: this.cachedConfig.paperWidth || '80mm',
-          silentPrint: this.cachedConfig.silentPrint !== false,
+          silentPrint: Boolean(this.cachedConfig.silentPrint),
           autoCut: this.cachedConfig.autoCut !== false,
           openCashDrawer: Boolean(this.cachedConfig.openCashDrawer),
         },

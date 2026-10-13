@@ -41,9 +41,13 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Users Collection
+    // Users Collection - Hardened against privilege escalation
     match /users/{userId} {
-      allow write: if isSuperAdmin() || request.auth.uid == userId;
+      allow create, delete: if isSuperAdmin();
+      allow update: if isSuperAdmin() || (
+        request.auth.uid == userId &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'permissions'])
+      );
     }
 
     // Menu and Categories

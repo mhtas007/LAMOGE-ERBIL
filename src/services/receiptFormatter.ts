@@ -20,6 +20,7 @@ export interface FormattedReceiptData {
   tableName?: string;
   receiptLanguage?: 'en' | 'ku' | 'ar';
   logo?: string;
+  isReprint?: boolean;
 }
 
 export class ReceiptFormatter {
@@ -112,8 +113,29 @@ export class ReceiptFormatter {
   public static buildEposXml(
     data: FormattedReceiptData,
     paperWidth: '80mm' | '58mm' = '80mm',
-    options?: { autoCut?: boolean; openCashDrawer?: boolean }
+    options?: {
+      autoCut?: boolean;
+      openCashDrawer?: boolean;
+      rasterPayload?: { rasterData: string; width: number; height: number };
+    }
   ): string {
+    const autoCutXml = options?.autoCut !== false ? `<feed line="3"/><cut type="feed"/>` : `<feed line="3"/>`;
+    const pulseXml = options?.openCashDrawer ? `<pulse drawer="drawer_1" time="pulse_100"/>` : '';
+
+    // If monochrome raster graphics are supplied, output pixel-perfect raster for Kurdish, Arabic & logo
+    if (options?.rasterPayload) {
+      return `<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+  <s:Body>
+    <epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">
+      ${pulseXml}
+      <image width="${options.rasterPayload.width}" height="${options.rasterPayload.height}" color="color_1" mode="mono">${options.rasterPayload.rasterData}</image>
+      ${autoCutXml}
+    </epos-print>
+  </s:Body>
+</s:Envelope>`;
+    }
+
     const lang = data.receiptLanguage || 'en';
     const labels = this.getLabels(lang);
     const charsPerLine = paperWidth === '80mm' ? 42 : 32;
@@ -153,9 +175,6 @@ export class ReceiptFormatter {
 
     const subtotalLine = formatRow(labels.subtotal, `${data.order.subtotal.toLocaleString()} ${curr}`);
     const totalLine = formatRow(labels.total, `${data.order.total.toLocaleString()} ${curr}`);
-
-    const autoCutXml = options?.autoCut !== false ? `<feed line="3"/><cut type="feed"/>` : `<feed line="3"/>`;
-    const pulseXml = options?.openCashDrawer ? `<pulse drawer="drawer_1" time="pulse_100"/>` : '';
 
     const orderTypeLabel = data.order.type === 'dine_in' ? labels.dineIn : data.order.type === 'takeaway' ? labels.takeaway : labels.delivery;
     const paymentLabel = data.order.paymentMethod === 'card' ? labels.card : labels.cash;

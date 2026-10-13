@@ -3,11 +3,13 @@ import { useAppContext } from '../context/AppContext';
 import { FileText, Search, Printer, X, Eye } from 'lucide-react';
 import { Order } from '../types';
 import { Receipt } from '../components/Receipt';
+import { PrinterService } from '../services/printerService';
 
 export const Receipts: React.FC = () => {
-  const { t, isRtl, recentOrders, language } = useAppContext();
+  const { t, isRtl, recentOrders, language, receiptSettings, menuItems, tables } = useAppContext();
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isReprinting, setIsReprinting] = useState(false);
 
   const formatDateTime = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -132,7 +134,7 @@ export const Receipts: React.FC = () => {
 
             <div className="bg-natural-bg p-2 rounded-2xl border border-natural-border shadow-inner mb-4 overflow-y-auto flex-1 flex justify-center">
               <div className="transform scale-[0.9] origin-top">
-                <Receipt order={selectedOrder} />
+                <Receipt order={selectedOrder} isReprint={true} />
               </div>
             </div>
 
@@ -144,13 +146,50 @@ export const Receipts: React.FC = () => {
                 {t('close')}
               </button>
               <button
-                onClick={() => {
+                disabled={isReprinting}
+                onClick={async () => {
+                  if (!selectedOrder) return;
+                  const protocol = receiptSettings?.printerProtocol || 'browser_airprint';
+                  const isNetworkProtocol = protocol === 'epson_epos' || protocol === 'raw_escpos_bridge' || protocol === 'star_webprnt';
+                  const hasPrinter = Boolean(receiptSettings?.printerIp?.trim() || receiptSettings?.bridgeUrl?.trim());
+
+                  if (isNetworkProtocol && hasPrinter && receiptSettings?.silentPrint !== false) {
+                    setIsReprinting(true);
+                    try {
+                      const tableObj = tables.find((t) => t.id === selectedOrder.tableId);
+                      const tableName = tableObj ? `${isRtl ? 'مێزی' : 'Table'} ${tableObj.number}` : undefined;
+                      await PrinterService.printReceipt({
+                        order: selectedOrder,
+                        cafeName: receiptSettings.cafeName || 'LAMOGE CAFE',
+                        address: receiptSettings.address,
+                        phone: receiptSettings.phone,
+                        headerText: receiptSettings.headerText,
+                        footerText: receiptSettings.footerText,
+                        menuItems,
+                        currencySymbol: receiptSettings.currency || 'IQD',
+                        tableName,
+                        receiptLanguage: (receiptSettings.receiptLanguage || language || 'en') as 'en' | 'ku' | 'ar',
+                        logo: receiptSettings.logo || undefined,
+                        isReprint: true,
+                      });
+                      setSelectedOrder(null);
+                      return;
+                    } catch (err) {
+                      console.warn('[Receipts Reprint] Network reprint error, opening print window:', err);
+                    } finally {
+                      setIsReprinting(false);
+                    }
+                  }
                   window.print();
                 }}
-                className="flex-[1.8] bg-natural-dark hover:opacity-90 text-white py-2.5 rounded-2xl font-bold transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 text-sm"
+                className="flex-[1.8] bg-natural-dark hover:opacity-90 text-white py-2.5 rounded-2xl font-bold transition-all shadow-md active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
               >
                 <Printer size={16} />
-                <span>{isRtl ? 'چاپکردنی وەسڵ (AirPrint)' : 'Print Receipt'}</span>
+                <span>
+                  {isReprinting
+                    ? (isRtl ? 'چاپ دەکرێت...' : 'Printing...')
+                    : (isRtl ? 'چاپکردنی دووبارە' : 'Reprint Receipt')}
+                </span>
               </button>
             </div>
           </div>
@@ -160,7 +199,7 @@ export const Receipts: React.FC = () => {
       {/* Dedicated Clean Thermal Receipt Root for iPad / WebKit AirPrint */}
       {selectedOrder && (
         <div id="receipt-print-root" className="hidden print:block receipt-printable-root">
-          <Receipt order={selectedOrder} />
+          <Receipt order={selectedOrder} isReprint={true} />
         </div>
       )}
     </div>

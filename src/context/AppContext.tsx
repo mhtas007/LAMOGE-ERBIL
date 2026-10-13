@@ -106,7 +106,8 @@ export interface ReceiptSettings {
   telegramChatId?: string;
   printerIp?: string;
   printerPort?: number;
-  printerProtocol?: 'epson_epos' | 'star_webprnt' | 'raw_escpos_bridge';
+  bridgeUrl?: string;
+  printerProtocol?: 'browser_airprint' | 'epson_epos' | 'star_webprnt' | 'raw_escpos_bridge';
   paperWidth?: '80mm' | '58mm';
   silentPrint?: boolean;
   autoCut?: boolean;
@@ -331,9 +332,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     telegramChatId: '',
     printerIp: '',
     printerPort: 80,
-    printerProtocol: 'epson_epos',
+    bridgeUrl: '',
+    printerProtocol: 'browser_airprint',
     paperWidth: '80mm',
-    silentPrint: true,
+    silentPrint: false,
     autoCut: true,
     openCashDrawer: false,
     autoPrint: true,
@@ -354,6 +356,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Also sync cafe_config if printer settings are modified
       const hasPrinterProps = 
         settings.printerIp !== undefined || 
+        settings.bridgeUrl !== undefined ||
         settings.printerProtocol !== undefined || 
         settings.printerPort !== undefined || 
         settings.paperWidth !== undefined || 
@@ -364,6 +367,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (hasPrinterProps) {
         const printerPayload: Record<string, any> = {};
         if (settings.printerIp !== undefined) printerPayload.printerIp = settings.printerIp;
+        if (settings.bridgeUrl !== undefined) printerPayload.bridgeUrl = settings.bridgeUrl;
         if (settings.printerProtocol !== undefined) printerPayload.protocol = settings.printerProtocol;
         if (settings.printerPort !== undefined && !isNaN(Number(settings.printerPort))) printerPayload.port = Number(settings.printerPort);
         if (settings.paperWidth !== undefined) printerPayload.paperWidth = settings.paperWidth;

@@ -29,19 +29,30 @@ export const Settings: React.FC = () => {
   const [safetySystemText, setSafetySystemText] = useState('');
   const [showPrinterSetup, setShowPrinterSetup] = useState(false);
 
-  // Server Tab Password Protection (Password: Mhtas0101$$$)
+  // Server Tab Password Protection (Secured with SHA-256 hash)
   const [isServerUnlocked, setIsServerUnlocked] = useState(false);
   const [serverPasswordInput, setServerPasswordInput] = useState('');
   const [serverPasswordError, setServerPasswordError] = useState(false);
   const [showServerPassword, setShowServerPassword] = useState(false);
 
-  const handleUnlockServer = (e?: React.FormEvent) => {
+  const SERVER_ADMIN_HASH = '82fa327f6e69b5ee267a2c128723f09ddf548abadb4ee85053f715996e26a63b';
+
+  const handleUnlockServer = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (serverPasswordInput === 'Mhtas0101$$$') {
-      setIsServerUnlocked(true);
-      setServerPasswordError(false);
-      setServerPasswordInput('');
-    } else {
+    try {
+      const msgBuffer = new TextEncoder().encode(serverPasswordInput);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+      if (hashHex === SERVER_ADMIN_HASH) {
+        setIsServerUnlocked(true);
+        setServerPasswordError(false);
+        setServerPasswordInput('');
+      } else {
+        setServerPasswordError(true);
+      }
+    } catch {
       setServerPasswordError(true);
     }
   };
@@ -51,18 +62,14 @@ export const Settings: React.FC = () => {
   }, [receiptSettings]);
 
   const handleTestNetworkPrinter = async () => {
-    const isIpConfigured = Boolean(
-      formData.printerIp && 
-      formData.printerIp.trim() !== '' && 
-      formData.printerIp.trim() !== '192.168.1.100'
-    );
+    const protocol = formData.printerProtocol || 'browser_airprint';
 
-    if (!isIpConfigured) {
+    if (protocol === 'browser_airprint') {
       setPrinterTestStatus({
         success: true,
         message: isRtl 
-          ? 'چاپی ئاسایی (Browser/AirPrint) چالاکە: پەنجەرەی چاپی تاقیکاری دەکرێتەوە...' 
-          : 'Standard browser printing active: opening test print dialog...',
+          ? 'چاپی ئاسایی (Apple AirPrint / Browser) چالاکە: پەنجەرەی چاپی تاقیکاری دەکرێتەوە...' 
+          : 'Apple AirPrint / Browser mode active: opening test print dialog...',
       });
       setTimeout(() => {
         window.print();
@@ -70,6 +77,15 @@ export const Settings: React.FC = () => {
       return;
     }
 
+    if (!formData.printerIp?.trim() && !formData.bridgeUrl?.trim()) {
+      setPrinterTestStatus({
+        success: false,
+        message: isRtl
+          ? 'تکایە ئایپی پرینتەر یان بەستەری سێرڤەر (Bridge URL) دیاریبکە لە ڕێکخستنەکاندا'
+          : 'Please enter Printer IP address or Bridge URL in Settings',
+      });
+      return;
+    }
 
     setIsTestingPrinter(true);
     setPrinterTestStatus(null);
@@ -79,8 +95,9 @@ export const Settings: React.FC = () => {
       await updateReceiptSettings(formData);
 
       const result = await PrinterService.testPrinter({
-        printerIp: formData.printerIp.trim(),
+        printerIp: formData.printerIp?.trim() || '',
         port: Number(formData.printerPort) || (formData.printerProtocol === 'raw_escpos_bridge' ? 3001 : 80),
+        bridgeUrl: formData.bridgeUrl?.trim() || '',
         protocol: formData.printerProtocol || 'epson_epos',
         paperWidth: formData.paperWidth || '80mm',
         autoCut: formData.autoCut !== false,
@@ -462,13 +479,14 @@ export const Settings: React.FC = () => {
                         </label>
                         <select
                           name="printerProtocol"
-                          value={formData.printerProtocol || 'epson_epos'}
+                          value={formData.printerProtocol || 'browser_airprint'}
                           onChange={handleChange}
                           className="w-full bg-natural-surface border border-natural-border rounded-xl py-2.5 px-3.5 text-xs font-medium focus:outline-none focus:border-natural-dark focus:ring-2 focus:ring-natural-dark/20 transition-all shadow-sm cursor-pointer"
                         >
+                          <option value="browser_airprint">Apple AirPrint / Safari (Direct iPad - No PC)</option>
                           <option value="epson_epos">Epson ePOS-Print (Direct LAN HTTP - Port 80/8008)</option>
+                          <option value="raw_escpos_bridge">Main Base Server / ESC/POS Bridge (Raster Graphics)</option>
                           <option value="star_webprnt">Star Micronics WebPRNT (Direct LAN HTTP)</option>
-                          <option value="raw_escpos_bridge">ESC/POS Micro-Bridge (Port 3001 &gt; Port 9100)</option>
                         </select>
                       </div>
 
@@ -487,6 +505,27 @@ export const Settings: React.FC = () => {
                         </select>
                       </div>
                     </div>
+
+                    {formData.printerProtocol === 'raw_escpos_bridge' && (
+                      <div className="mb-4">
+                        <label className="block text-xs font-bold text-natural-text mb-1.5">
+                          {isRtl ? 'بەستەری سێرڤەری سەرەکی (Bridge URL)' : 'Base Server / Print Bridge URL'}
+                        </label>
+                        <input
+                          type="text"
+                          name="bridgeUrl"
+                          value={formData.bridgeUrl || ''}
+                          onChange={handleChange}
+                          placeholder="http://192.168.1.100:3001"
+                          className="w-full bg-natural-surface border border-natural-border rounded-xl py-2.5 px-3.5 text-sm font-mono focus:outline-none focus:border-natural-dark focus:ring-2 focus:ring-natural-dark/20 transition-all shadow-sm"
+                        />
+                        <p className="text-[11px] text-natural-text-tertiary mt-1">
+                          {isRtl
+                            ? 'ناونیشانی سێرڤەری پرینت لەسەر کۆمپیوتەری کەشێر (بۆ نموونە http://192.168.1.100:3001)'
+                            : 'Host URL of the Print Bridge on the cashier computer (e.g., http://192.168.1.100:3001)'}
+                        </p>
+                      </div>
+                    )}
 
                     <div className="space-y-2.5 mb-5">
                       <label className="flex items-center gap-3 bg-natural-bg p-3.5 rounded-xl border border-natural-border cursor-pointer hover:border-natural-accent transition-colors">

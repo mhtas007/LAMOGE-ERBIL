@@ -5,9 +5,10 @@ import { Order } from '../types';
 interface ReceiptProps {
   order?: Order;
   settingsOverride?: any;
+  isReprint?: boolean;
 }
 
-export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride }) => {
+export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride, isReprint }) => {
   const { receiptSettings: globalReceiptSettings, menuItems, tables } = useAppContext();
   
   const receiptSettings = settingsOverride || globalReceiptSettings;
@@ -193,6 +194,12 @@ export const Receipt: React.FC<ReceiptProps> = ({ order, settingsOverride }) => 
           <div>{receiptSettings.address}</div>
         )}
       </div>
+
+      {isReprint && (
+        <div className="my-1.5 py-1 px-2 border border-black text-center font-bold text-xs uppercase tracking-wider">
+          {isRtl ? '*** وەسڵی دووبارە / REPRINT ***' : '*** REPRINT / DUPLICATE ***'}
+        </div>
+      )}
 
       {/* 3. Date & Order Meta (Balanced Key-Value Rows) */}
       <div className="border-t border-dashed border-black/40 my-2"></div>

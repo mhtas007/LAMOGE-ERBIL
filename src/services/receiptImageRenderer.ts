@@ -189,6 +189,15 @@ export class ReceiptImageRenderer {
       y += is58mm ? 20 : 24;
     }
 
+    if (data.isReprint) {
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.font = `bold ${is58mm ? '16px' : '20px'} ${fontPrimary}`;
+      ctx.fillText(isRtl ? '*** وەسڵی دووبارە / REPRINT ***' : '*** REPRINT / DUPLICATE ***', centerX, y);
+      y += is58mm ? 22 : 28;
+      ctx.restore();
+    }
+
     y += 8;
 
     // --- 3. METADATA SECTION (Stacked Vertically Under Each Other) ---
@@ -235,10 +244,15 @@ export class ReceiptImageRenderer {
     drawDashedLine(y);
     y += 14;
 
-    const labelPos = isRtl ? rightX : leftX;
-    const valPos = isRtl ? leftX : rightX;
-    const labelAlign = isRtl ? 'right' : 'left';
-    const valAlign = isRtl ? 'left' : 'right';
+    const alignStart: CanvasTextAlign = isRtl ? 'right' : 'left';
+    const alignEnd: CanvasTextAlign = isRtl ? 'left' : 'right';
+    const posStart = isRtl ? rightX : leftX;
+    const posEnd = isRtl ? leftX : rightX;
+
+    const labelPos = posStart;
+    const valPos = posEnd;
+    const labelAlign = alignStart;
+    const valAlign = alignEnd;
     const rowGap = is58mm ? 22 : 26;
     const valWeight = isRtl ? '500' : 'bold';
 
@@ -275,6 +289,14 @@ export class ReceiptImageRenderer {
     ctx.font = `${valWeight} ${is58mm ? '15px' : '19px'} ${fontPrimary}`;
     ctx.fillText(typeVal, valPos, y);
     y += rowGap + 4;
+
+    if (data.isReprint) {
+      ctx.textAlign = 'center';
+      ctx.font = `bold ${is58mm ? '14px' : '17px'} ${fontPrimary}`;
+      const reprintText = lang === 'ku' ? '** دووبارە چاپکراوە / REPRINT **' : lang === 'ar' ? '** نسخة معادة / REPRINT **' : '** REPRINT **';
+      ctx.fillText(reprintText, centerX, y);
+      y += is58mm ? 20 : 24;
+    }
 
     // --- 4. TABLE HEADER ---
     drawSolidLine(y, 2);

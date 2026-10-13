@@ -5,6 +5,18 @@ import net from 'net';
 import {defineConfig} from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+function isValidLanIp(ip: string): boolean {
+  if (!ip || typeof ip !== 'string') return false;
+  const trimmed = ip.trim();
+  const ipv4Match = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(trimmed);
+  if (!ipv4Match) return false;
+  const octets = ipv4Match.slice(1, 5).map(Number);
+  if (octets.some((o) => o < 0 || o > 255)) return false;
+  if (octets[0] === 127 || octets[0] === 0 || octets[0] === 255) return false;
+  if (octets[0] === 169 && octets[1] === 254) return false;
+  return true;
+}
+
 function thermalPrinterMiddleware() {
   return {
     name: 'thermal-printer-middleware',
@@ -17,6 +29,14 @@ function thermalPrinterMiddleware() {
             try {
               const payload = JSON.parse(body || '{}');
               const targetIp = (payload.printerIp || '192.168.1.35').trim();
+
+              if (!isValidLanIp(targetIp)) {
+                res.statusCode = 400;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ success: false, error: 'Invalid or restricted LAN IP address' }));
+                return;
+              }
+
               const targetPort = 9100;
               const { plainText, rasterData, bytesWidth, height, openCashDrawer, autoCut, cafeName, order } = payload;
               

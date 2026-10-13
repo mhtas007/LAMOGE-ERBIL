@@ -70,6 +70,7 @@ export const POS: React.FC = () => {
   const [orderNotes, setOrderNotes] = useState("");
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [isSilentPrinting, setIsSilentPrinting] = useState(false);
+  const [isProcessingCheckout, setIsProcessingCheckout] = useState(false);
 
   const showToast = (text: string, type: 'success' | 'error' = 'success') => {
     setToastMessage({ text, type });
@@ -242,7 +243,7 @@ export const POS: React.FC = () => {
     notes: orderNotes,
   }), [cartItems, orderType, subtotal, discountValue, serviceChargeValue, total, liveInvoiceCode, paymentMethod, orderNotes]);
 
-  const performSilentPrint = async (orderToPrint: Order) => {
+  const performSilentPrint = async (orderToPrint: Order, isReprint = false) => {
     setIsSilentPrinting(true);
     const tableObj = tables.find((t) => t.id === orderToPrint.tableId);
     const tableName = tableObj ? `${isRtl ? 'مێزی' : 'Table'} ${tableObj.number}` : undefined;
@@ -259,20 +260,24 @@ export const POS: React.FC = () => {
         currencySymbol: receiptSettings.currency || 'IQD',
         tableName,
         receiptLanguage: (receiptSettings.receiptLanguage || language || 'en') as 'en' | 'ku' | 'ar',
-        logo: receiptSettings.logo,
+        logo: receiptSettings.logo || undefined,
+        isReprint,
       });
 
       showToast(
-        isRtl ? `وەسڵ بە سەرکەوتوویی چاپکرا لە پرینتەر (${res.printerIp})` : `Receipt printed silently to ${res.printerIp} (${res.durationMs}ms)`,
+        isRtl ? `وەسڵ بە سەرکەوتوویی چاپکرا لە پرینتەر (${res.printerIp})` : `Receipt printed silently (${res.durationMs}ms)`,
         'success'
       );
 
       // Automatically close the receipt window after network printing
-      setTimeout(() => {
-        handleCloseReceipt();
-      }, 500);
+      if (!isReprint) {
+        setTimeout(() => {
+          handleCloseReceipt();
+        }, 500);
+      }
     } catch (err: any) {
-      console.warn('[POS Checkout] Silent network print exception:', err.message);
+      console.warn('[POS Checkout] Network print exception:', err.message);
+      showToast(err.message, 'error');
       // Automatic fallback to native iPad AirPrint / Browser printing
       setTimeout(() => {
         window.print();
@@ -283,51 +288,59 @@ export const POS: React.FC = () => {
   };
 
   const handleCheckout = () => {
-    if (cartItems.length === 0) return;
+    if (isProcessingCheckout || cartItems.length === 0) return;
+    setIsProcessingCheckout(true);
 
-    const isTableOrder = !!selectedTableId;
-    setLastOrderWasTable(isTableOrder);
+    try {
+      const isTableOrder = !!selectedTableId;
+      setLastOrderWasTable(isTableOrder);
 
-    const newOrder: Order = {
-      ...liveOrderForReceipt,
-      createdAt: new Date().toISOString(),
-      id: Math.random().toString(36).substr(2, 9),
-    };
+      const newOrder: Order = {
+        ...liveOrderForReceipt,
+        createdAt: new Date().toISOString(),
+        id: Math.random().toString(36).substr(2, 9),
+      };
 
-    if (selectedTableId) {
-      newOrder.tableId = selectedTableId;
-    }
-    
-    setLastOrder(newOrder);
-
-    const hasConfiguredPrinter = Boolean(
-      receiptSettings?.printerIp && 
-      receiptSettings.printerIp.trim() !== '' && 
-      receiptSettings.printerIp.trim() !== '192.168.1.100'
-    );
-    const isSilentMode = receiptSettings?.silentPrint !== false;
-
-    if (receiptSettings?.autoPrint !== false) {
-      if (hasConfiguredPrinter && isSilentMode) {
-        // Direct Network IP Print (Epson ePOS / Star WebPRNT)
-        performSilentPrint(newOrder);
-      } else {
-        // Standard iPad AirPrint / Browser Print
-        // Trigger synchronously so Safari on iOS / iPadOS allows it directly
-        setTimeout(() => {
-          window.print();
-        }, 80);
+      if (selectedTableId) {
+        newOrder.tableId = selectedTableId;
       }
-    }
+      
+      setLastOrder(newOrder);
 
-    addOrder(newOrder);
-    setCartItems([]);
-    if (selectedTableId) {
-      clearTableOrder(selectedTableId);
-      setSelectedTableId(null);
+      const protocol = receiptSettings?.printerProtocol || 'browser_airprint';
+      const isNetworkProtocol = protocol === 'epson_epos' || protocol === 'raw_escpos_bridge' || protocol === 'star_webprnt';
+      const hasConfiguredPrinter = Boolean(
+        receiptSettings?.printerIp?.trim() || receiptSettings?.bridgeUrl?.trim()
+      );
+      const isSilentMode = receiptSettings?.silentPrint !== false;
+
+      if (receiptSettings?.autoPrint !== false) {
+        if (isNetworkProtocol && hasConfiguredPrinter && isSilentMode) {
+          // Direct Network IP Print (Epson ePOS / ESC-POS Bridge)
+          performSilentPrint(newOrder, false);
+        } else {
+          // Standard iPad AirPrint / Browser Print
+          // Trigger synchronously so Safari on iOS / iPadOS allows it directly
+          setTimeout(() => {
+            window.print();
+          }, 80);
+        }
+      }
+
+      addOrder(newOrder);
+      setCartItems([]);
+      if (selectedTableId) {
+        clearTableOrder(selectedTableId);
+        setSelectedTableId(null);
+      }
+      setShowCheckout(false);
+      setShowReceipt(true);
+    } catch (checkoutErr: any) {
+      console.error('[POS] Checkout failed:', checkoutErr);
+      showToast(isRtl ? 'هەڵەیەک ڕوویدا لە کاتی تەواوکردنی داواکاری' : 'Failed to complete order', 'error');
+    } finally {
+      setIsProcessingCheckout(false);
     }
-    setShowCheckout(false);
-    setShowReceipt(true);
   };
 
   const handleCloseReceipt = () => {
@@ -340,14 +353,14 @@ export const POS: React.FC = () => {
 
   const handlePrint = async () => {
     const orderToPrint = lastOrder || liveOrderForReceipt;
+    const protocol = receiptSettings?.printerProtocol || 'browser_airprint';
+    const isNetworkProtocol = protocol === 'epson_epos' || protocol === 'raw_escpos_bridge' || protocol === 'star_webprnt';
     const hasConfiguredPrinter = Boolean(
-      receiptSettings?.printerIp && 
-      receiptSettings.printerIp.trim() !== '' && 
-      receiptSettings.printerIp.trim() !== '192.168.1.100'
+      receiptSettings?.printerIp?.trim() || receiptSettings?.bridgeUrl?.trim()
     );
 
-    if (hasConfiguredPrinter && receiptSettings?.silentPrint !== false) {
-      await performSilentPrint(orderToPrint);
+    if (isNetworkProtocol && hasConfiguredPrinter && receiptSettings?.silentPrint !== false) {
+      await performSilentPrint(orderToPrint, true);
     } else {
       window.print();
     }
@@ -953,10 +966,14 @@ export const POS: React.FC = () => {
                 <div className="mt-auto pt-2 flex gap-3">
                   <button
                     onClick={handleCheckout}
-                    disabled={paymentMethod === 'cash' && Number(tendered) < total}
-                    className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white py-5 rounded-[2rem] text-xl font-bold transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+                    disabled={(paymentMethod === 'cash' && Number(tendered) < total) || isProcessingCheckout}
+                    className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white py-5 rounded-[2rem] text-xl font-bold transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2"
                   >
-                    {t("completePayment")}
+                    {isProcessingCheckout ? (
+                      <span>{isRtl ? 'جێبەجێدەکرێت...' : 'Processing...'}</span>
+                    ) : (
+                      <span>{t("completePayment")}</span>
+                    )}
                   </button>
                 </div>
               </div>
