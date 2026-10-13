@@ -237,8 +237,10 @@ export const Reports: React.FC = () => {
     });
   }, [expenses, dateRange, customDate]);
 
-  const totalRevenue = filteredOrders.reduce((sum, order) => sum + order.total, 0);
-  const totalOrdersCount = filteredOrders.length;
+  const completedOrders = useMemo(() => filteredOrders.filter(o => o.status !== 'cancelled'), [filteredOrders]);
+  const cancelledOrdersCount = useMemo(() => filteredOrders.filter(o => o.status === 'cancelled').length, [filteredOrders]);
+  const totalRevenue = completedOrders.reduce((sum, order) => sum + order.total, 0);
+  const totalOrdersCount = completedOrders.length;
   const totalExpensesAmount = filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0);
   const netProfit = totalRevenue - totalExpensesAmount;
   
@@ -252,7 +254,7 @@ export const Reports: React.FC = () => {
   const salesChartData = useMemo(() => {
     const dataMap = new Map<string, number>();
     
-    filteredOrders.forEach(order => {
+    completedOrders.forEach(order => {
       const date = new Date(order.createdAt);
       const key = dateRange === 'year' || dateRange === 'all' 
         ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
@@ -343,6 +345,28 @@ export const Reports: React.FC = () => {
     }
   };
 
+  const exportExcel = () => {
+    const headers = ['ژمارەی پسوولە (Invoice)', 'بەروار (Date)', 'جۆر (Type)', 'شێوازی پارەدان (Payment)', 'ژمارەی کاڵا (Items)', 'کۆی گشتی (Total IQD)', 'دۆخ (Status)', 'تێبینی یان هۆکار (Notes/Reason)'];
+    const rows = filteredOrders.map(o => [
+      `"${o.invoiceCode || o.id}"`,
+      `"${new Date(o.createdAt).toLocaleString()}"`,
+      `"${o.type}"`,
+      `"${o.paymentMethod || 'cash'}"`,
+      o.items.length,
+      o.total,
+      `"${o.status === 'cancelled' ? 'Cancelled / هەڵوەشاوەتەوە' : 'Completed / تەواوکراو'}"`,
+      `"${o.cancelReason || o.notes || ''}"`,
+    ]);
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `LAMOGE_Financial_Report_${dateRange}_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6">
       {/* Premium Dashboard Header */}
@@ -384,6 +408,15 @@ export const Reports: React.FC = () => {
               className="bg-natural-surface border border-natural-border rounded-xl px-4 py-2 text-sm text-natural-text font-bold focus:outline-none focus:ring-2 focus:ring-natural-dark/20"
             />
           )}
+
+          <button
+            onClick={exportExcel}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 font-bold text-sm grow md:grow-0"
+            title="Download CSV / Excel spreadsheet"
+          >
+            <Download size={18} />
+            <span>{isRtl ? 'دەرکردنی Excel' : 'Export Excel'}</span>
+          </button>
 
           <button 
             onClick={exportPDF}

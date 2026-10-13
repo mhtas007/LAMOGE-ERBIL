@@ -90,6 +90,9 @@ export interface Order {
   invoiceCode: string;
   userId?: string;
   notes?: string;
+  cancelReason?: string;
+  cancelledAt?: string;
+  cancelledBy?: string;
 }
 
 export interface Expense {

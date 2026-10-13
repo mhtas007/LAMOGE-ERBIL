@@ -1,4 +1,4 @@
-import { FormattedReceiptData } from './receiptFormatter';
+import { FormattedReceiptData, ZReportData, KitchenTicketData } from './receiptFormatter';
 
 export interface RasterReceiptResult {
   rasterData: string;
@@ -427,7 +427,18 @@ export class ReceiptImageRenderer {
 
     const finalHeight = y;
 
-    // Crop to exact final height
+    return this.canvasToMonochromeRaster(canvas, width, finalHeight, bytesWidth);
+  }
+
+  /**
+   * Helper to convert an HTML5 Canvas into a 1-bit monochrome raster buffer
+   */
+  public static canvasToMonochromeRaster(
+    sourceCanvas: HTMLCanvasElement,
+    width: number,
+    finalHeight: number,
+    bytesWidth: number
+  ): RasterReceiptResult {
     const finalCanvas = document.createElement('canvas');
     finalCanvas.width = width;
     finalCanvas.height = finalHeight;
@@ -436,12 +447,11 @@ export class ReceiptImageRenderer {
 
     finalCtx.fillStyle = '#ffffff';
     finalCtx.fillRect(0, 0, width, finalHeight);
-    finalCtx.drawImage(canvas, 0, 0, width, finalHeight, 0, 0, width, finalHeight);
+    finalCtx.drawImage(sourceCanvas, 0, 0, width, finalHeight, 0, 0, width, finalHeight);
 
     const imgData = finalCtx.getImageData(0, 0, width, finalHeight);
     const pixels = imgData.data;
 
-    // Convert to 1-bit monochrome raster buffer
     const rasterBuffer = new Uint8Array(bytesWidth * finalHeight);
     for (let row = 0; row < finalHeight; row++) {
       for (let col = 0; col < width; col++) {
@@ -451,7 +461,6 @@ export class ReceiptImageRenderer {
         const b = pixels[pIdx + 2];
         const a = pixels[pIdx + 3];
 
-        // Balanced natural black pixel detection for crisp, clean thermal print
         const lum = r * 0.299 + g * 0.587 + b * 0.114;
         const isBlack = a > 50 && lum < 205;
         if (isBlack) {
@@ -475,5 +484,272 @@ export class ReceiptImageRenderer {
       height: finalHeight,
       bytesWidth,
     };
+  }
+
+  /**
+   * Renders Shift Closure (Z-Report) to 1-bit monochrome thermal raster
+   */
+  public static async renderZReportToRaster(
+    data: ZReportData,
+    paperWidth: '80mm' | '58mm' = '80mm'
+  ): Promise<RasterReceiptResult> {
+    const is58mm = paperWidth === '58mm';
+    const width = is58mm ? 384 : 576;
+    const bytesWidth = Math.ceil(width / 8);
+    const leftX = is58mm ? 10 : 16;
+    const rightX = is58mm ? 374 : 560;
+    const centerX = width / 2;
+    const curr = data.currencySymbol || 'IQD';
+    const font = "'Segoe UI', Tahoma, Arial, 'Noto Sans Arabic', sans-serif";
+
+    const estimatedHeight = is58mm ? 700 : 850;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = estimatedHeight;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) throw new Error('Could not create canvas context');
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, estimatedHeight);
+    ctx.fillStyle = '#000000';
+    ctx.textBaseline = 'top';
+
+    let y = 16;
+
+    // Header Title
+    ctx.textAlign = 'center';
+    ctx.font = `bold ${is58mm ? '20px' : '26px'} ${font}`;
+    ctx.fillText(data.cafeName || 'LAMOGE CAFE', centerX, y);
+    y += is58mm ? 26 : 34;
+
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(leftX, y, rightX - leftX, is58mm ? 30 : 38);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `bold ${is58mm ? '15px' : '19px'} ${font}`;
+    ctx.fillText('ڕاپۆرتی داخستنی شیفت / Z-REPORT', centerX, y + (is58mm ? 6 : 8));
+    ctx.fillStyle = '#000000';
+    y += is58mm ? 40 : 50;
+
+    // Shift Meta
+    ctx.textAlign = 'right';
+    ctx.font = `600 ${is58mm ? '13px' : '16px'} ${font}`;
+    ctx.fillText(`کارمەند: ${data.userName} (${data.userRole})`, rightX, y);
+    y += is58mm ? 22 : 26;
+
+    const formatDt = (dtStr: string) => {
+      try {
+        const d = new Date(dtStr);
+        return d.toLocaleDateString('ku-IQ') + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      } catch {
+        return dtStr;
+      }
+    };
+
+    ctx.fillText(`دەستپێک: ${formatDt(data.clockInTime)}`, rightX, y);
+    y += is58mm ? 22 : 26;
+    ctx.fillText(`کۆتایی: ${formatDt(data.clockOutTime)}`, rightX, y);
+    y += is58mm ? 22 : 26;
+    ctx.fillText(`ماوەی کارکردن: ${data.totalHours.toFixed(1)} کاتژمێر`, rightX, y);
+    y += is58mm ? 26 : 32;
+
+    // Divider
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(leftX, y);
+    ctx.lineTo(rightX, y);
+    ctx.stroke();
+    y += 12;
+
+    // Sales Section
+    ctx.font = `bold ${is58mm ? '14px' : '17px'} ${font}`;
+    ctx.fillText('پوختەی فرۆشتن و داهات:', rightX, y);
+    y += is58mm ? 24 : 28;
+
+    const drawRow = (label: string, val: string, isBold = false) => {
+      ctx.font = `${isBold ? 'bold' : '500'} ${is58mm ? '13px' : '16px'} ${font}`;
+      ctx.textAlign = 'right';
+      ctx.fillText(label, rightX, y);
+      ctx.textAlign = 'left';
+      ctx.fillText(val, leftX, y);
+      y += is58mm ? 22 : 26;
+    };
+
+    drawRow('کۆی پسوولەکان:', `${data.totalOrders} وەسڵ`);
+    if (data.cashSales !== undefined) drawRow('فرۆشی کاش:', `${curr} ${data.cashSales.toLocaleString()}`);
+    if (data.cardSales !== undefined && data.cardSales > 0) drawRow('فرۆشی کارت:', `${curr} ${data.cardSales.toLocaleString()}`);
+    if (data.digitalSales !== undefined && data.digitalSales > 0) drawRow('فرۆشی FIB / FastPay:', `${curr} ${data.digitalSales.toLocaleString()}`);
+    drawRow('کۆی گشتی داهات:', `${curr} ${data.totalSales.toLocaleString()}`, true);
+
+    y += 8;
+    ctx.beginPath();
+    ctx.moveTo(leftX, y);
+    ctx.lineTo(rightX, y);
+    ctx.stroke();
+    y += 12;
+
+    // Cash Reconciliation Section
+    ctx.font = `bold ${is58mm ? '14px' : '17px'} ${font}`;
+    ctx.textAlign = 'right';
+    ctx.fillText('تەرازوی سندوق (Cash Drawer):', rightX, y);
+    y += is58mm ? 24 : 28;
+
+    drawRow('سەرمایەی سەرەتا:', `${curr} ${(data.startingCash || 0).toLocaleString()}`);
+    drawRow('کاشی چاوەڕوانکراو:', `${curr} ${data.expectedCash.toLocaleString()}`);
+    drawRow('کاشی ژمێردراوی کاشێر:', `${curr} ${data.declaredCash.toLocaleString()}`, true);
+
+    // Discrepancy with highlight
+    const disc = data.discrepancy;
+    let discText = 'تەواو و بێ جیاوازی (0)';
+    if (disc > 0) discText = `+${disc.toLocaleString()} ${curr} (زیادە)`;
+    if (disc < 0) discText = `${disc.toLocaleString()} ${curr} (کورتێنان)`;
+    drawRow('جیاوازی سندوق:', discText, true);
+
+    y += 16;
+    ctx.beginPath();
+    ctx.moveTo(leftX, y);
+    ctx.lineTo(rightX, y);
+    ctx.stroke();
+    y += 24;
+
+    // Signatures
+    ctx.textAlign = 'right';
+    ctx.font = `500 ${is58mm ? '12px' : '15px'} ${font}`;
+    ctx.fillText('واژۆی کاشێر:  ___________________', rightX, y);
+    y += is58mm ? 30 : 38;
+    ctx.fillText('واژۆی بەڕێوەبەر: ___________________', rightX, y);
+    y += is58mm ? 36 : 46;
+
+    ctx.textAlign = 'center';
+    ctx.font = `bold 11px ${font}`;
+    ctx.fillText('LAMOGE POS • SHIFT CLOSING VERIFIED', centerX, y);
+    y += 24;
+
+    return this.canvasToMonochromeRaster(canvas, width, y, bytesWidth);
+  }
+
+  /**
+   * Renders Kitchen / Bar Order Ticket (KOT) without pricing
+   */
+  public static async renderKitchenTicketToRaster(
+    data: KitchenTicketData,
+    paperWidth: '80mm' | '58mm' = '80mm'
+  ): Promise<RasterReceiptResult> {
+    const is58mm = paperWidth === '58mm';
+    const width = is58mm ? 384 : 576;
+    const bytesWidth = Math.ceil(width / 8);
+    const leftX = is58mm ? 10 : 16;
+    const rightX = is58mm ? 374 : 560;
+    const centerX = width / 2;
+    const font = "'Segoe UI', Tahoma, Arial, 'Noto Sans Arabic', sans-serif";
+
+    let estimatedHeight = is58mm ? 400 : 500;
+    data.order.items.forEach((it) => {
+      estimatedHeight += is58mm ? 44 : 56;
+      if (it.notes) estimatedHeight += 24;
+      if (it.selectedAddons) estimatedHeight += it.selectedAddons.length * 20;
+    });
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = estimatedHeight;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) throw new Error('Could not create canvas context');
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, estimatedHeight);
+    ctx.fillStyle = '#000000';
+    ctx.textBaseline = 'top';
+
+    let y = 14;
+
+    // Header banner
+    ctx.fillRect(leftX, y, rightX - leftX, is58mm ? 34 : 42);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `bold ${is58mm ? '17px' : '22px'} ${font}`;
+    ctx.textAlign = 'center';
+    ctx.fillText('*** چێشتخانە و بار / KITCHEN TICKET ***', centerX, y + (is58mm ? 6 : 8));
+    ctx.fillStyle = '#000000';
+    y += is58mm ? 44 : 54;
+
+    // Table / Type Big
+    ctx.textAlign = 'center';
+    ctx.font = `900 ${is58mm ? '24px' : '32px'} ${font}`;
+    const destination = data.tableName ? data.tableName : (data.order.type === 'dine_in' ? 'هۆڵ' : 'سەفەری (TAKEAWAY)');
+    ctx.fillText(destination, centerX, y);
+    y += is58mm ? 32 : 40;
+
+    ctx.textAlign = 'right';
+    ctx.font = `600 ${is58mm ? '13px' : '16px'} ${font}`;
+    const invoiceNo = data.order.invoiceCode || `#${data.order.id.slice(0, 8)}`;
+    ctx.fillText(`ژمارەی پسوولە: ${invoiceNo}`, rightX, y);
+    ctx.textAlign = 'left';
+    const timeStr = new Date(data.order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    ctx.fillText(`کات: ${timeStr}`, leftX, y);
+    y += is58mm ? 24 : 30;
+
+    // Solid line
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(leftX, y);
+    ctx.lineTo(rightX, y);
+    ctx.stroke();
+    y += 12;
+
+    // Items
+    for (const item of data.order.items) {
+      const menuObj = data.menuItems.find((m) => m.id === item.menuItemId);
+      const itemName = menuObj ? (menuObj.nameKu || menuObj.nameAr || menuObj.nameEn) : 'کاڵا';
+
+      ctx.textAlign = 'right';
+      ctx.font = `bold ${is58mm ? '18px' : '23px'} ${font}`;
+      ctx.fillText(`${itemName}`, rightX - 60, y);
+
+      // Big Qty box
+      ctx.textAlign = 'left';
+      ctx.font = `900 ${is58mm ? '19px' : '24px'} ${font}`;
+      ctx.fillText(`[ ${item.quantity}x ]`, leftX, y);
+      y += is58mm ? 26 : 32;
+
+      if (item.variantName) {
+        ctx.textAlign = 'right';
+        ctx.font = `600 ${is58mm ? '12px' : '15px'} ${font}`;
+        ctx.fillText(`  سایز: ${item.variantName}`, rightX - 20, y);
+        y += is58mm ? 18 : 22;
+      }
+
+      if (item.selectedAddons && item.selectedAddons.length > 0) {
+        ctx.textAlign = 'right';
+        ctx.font = `500 ${is58mm ? '12px' : '14px'} ${font}`;
+        const addonsStr = item.selectedAddons.map((a) => a.nameKu || a.nameAr || a.nameEn).join(' + ');
+        ctx.fillText(`  زیادکراو: + ${addonsStr}`, rightX - 20, y);
+        y += is58mm ? 18 : 22;
+      }
+
+      if (item.notes) {
+        ctx.textAlign = 'right';
+        ctx.font = `italic 600 ${is58mm ? '12px' : '14px'} ${font}`;
+        ctx.fillText(`  * تێبینی: ${item.notes}`, rightX - 20, y);
+        y += is58mm ? 18 : 22;
+      }
+
+      y += 8;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(leftX, y);
+      ctx.lineTo(rightX, y);
+      ctx.stroke();
+      y += 10;
+    }
+
+    if (data.order.notes) {
+      y += 6;
+      ctx.font = `bold ${is58mm ? '13px' : '16px'} ${font}`;
+      ctx.textAlign = 'right';
+      ctx.fillText(`تێبینی گشتی: ${data.order.notes}`, rightX, y);
+      y += is58mm ? 22 : 28;
+    }
+
+    y += 16;
+    return this.canvasToMonochromeRaster(canvas, width, y, bytesWidth);
   }
 }

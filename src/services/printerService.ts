@@ -9,7 +9,7 @@
  * Implements strict job lifecycle, duplicate prevention, device detection, and actionable error diagnostics.
  */
 import { printerConfigService, PrinterConfig } from './printerConfigService';
-import { ReceiptFormatter, FormattedReceiptData } from './receiptFormatter';
+import { ReceiptFormatter, FormattedReceiptData, ZReportData, KitchenTicketData } from './receiptFormatter';
 import { ReceiptImageRenderer } from './receiptImageRenderer';
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
 
@@ -460,6 +460,160 @@ export class PrinterService {
     } finally {
       this.isJobLocked = false;
       this.activeJobId = null;
+    }
+  }
+
+  /**
+   * Prints shift closure report (Z-Report)
+   */
+  public static async printZReport(
+    data: ZReportData,
+    overrideConfig?: Partial<PrinterConfig>
+  ): Promise<PrintResult> {
+    const startTime = Date.now();
+    const config: PrinterConfig = {
+      ...(await printerConfigService.getPrinterConfig()),
+      ...overrideConfig,
+    };
+
+    const protocol = config.protocol || 'browser_airprint';
+    const targetIp = (config.printerIp || '').trim();
+    const jobId = `ZREP-${data.shiftId.slice(-6)}-${Date.now()}`;
+
+    if (protocol === 'browser_airprint') {
+      return this.printViaAirPrint(jobId, startTime);
+    }
+
+    const raster = await ReceiptImageRenderer.renderZReportToRaster(
+      data,
+      config.paperWidth || '80mm'
+    );
+
+    await this.dispatchRasterJob(raster, targetIp, config);
+
+    return {
+      success: true,
+      message: `Z-Report printed successfully (${protocol})`,
+      printerIp: targetIp || 'Bridge',
+      durationMs: Date.now() - startTime,
+      jobId,
+      protocol,
+    };
+  }
+
+  /**
+   * Prints kitchen/bar preparation ticket (KOT)
+   */
+  public static async printKitchenTicket(
+    data: KitchenTicketData,
+    overrideConfig?: Partial<PrinterConfig>
+  ): Promise<PrintResult> {
+    const startTime = Date.now();
+    const config: PrinterConfig = {
+      ...(await printerConfigService.getPrinterConfig()),
+      ...overrideConfig,
+    };
+
+    const protocol = config.protocol || 'browser_airprint';
+    const targetIp = (config.printerIp || '').trim();
+    const jobId = `KOT-${data.order.invoiceCode || data.order.id.slice(0, 6)}-${Date.now()}`;
+
+    if (protocol === 'browser_airprint') {
+      return this.printViaAirPrint(jobId, startTime);
+    }
+
+    const raster = await ReceiptImageRenderer.renderKitchenTicketToRaster(
+      data,
+      config.paperWidth || '80mm'
+    );
+
+    await this.dispatchRasterJob(raster, targetIp, config);
+
+    return {
+      success: true,
+      message: `Kitchen ticket printed successfully (${protocol})`,
+      printerIp: targetIp || 'Bridge',
+      durationMs: Date.now() - startTime,
+      jobId,
+      protocol,
+    };
+  }
+
+  /**
+   * Common dispatcher for pre-rendered raster jobs (Z-Report, KOT)
+   */
+  private static async dispatchRasterJob(
+    raster: { rasterData: string; width: number; height: number; bytesWidth: number },
+    targetIp: string,
+    config: PrinterConfig
+  ): Promise<void> {
+    const protocol = config.protocol || 'browser_airprint';
+    const bridgeUrl = (config.bridgeUrl || '').trim();
+    const port = config.port || (protocol === 'raw_escpos_bridge' ? 3001 : 80);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), config.timeoutMs || 6000);
+
+    try {
+      if (protocol === 'raw_escpos_bridge') {
+        const candidateEndpoints: string[] = [];
+        if (bridgeUrl) candidateEndpoints.push(bridgeUrl.endsWith('/api/print') ? bridgeUrl : `${bridgeUrl}/api/print`);
+        if (typeof window !== 'undefined') {
+          candidateEndpoints.push(`${window.location.origin}/api/print`);
+          candidateEndpoints.push(`http://${window.location.hostname}:3001/api/print`);
+        }
+
+        let sent = false;
+        let lastErr: any = null;
+        for (const ep of candidateEndpoints) {
+          try {
+            const res = await fetch(ep, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                printerIp: targetIp || '192.168.1.35',
+                port: 9100,
+                rasterData: raster.rasterData,
+                bytesWidth: raster.bytesWidth,
+                height: raster.height,
+                autoCut: true,
+                openCashDrawer: false,
+              }),
+              signal: controller.signal,
+            });
+            if (res.ok) {
+              sent = true;
+              break;
+            }
+          } catch (e) {
+            lastErr = e;
+          }
+        }
+        if (!sent) throw lastErr || new Error('Failed to send raster job to bridge');
+      } else {
+        // Epson ePOS XML
+        const endpoint = `http://${targetIp}:${port}/cgi-bin/epos/service.cgi?devid=local_printer&timeout=5000`;
+        const xml = `<?xml version="1.0" encoding="utf-8"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print"><image width="${raster.width}" height="${raster.height}" color="color_1" mode="mono">${raster.rasterData}</image><cut type="feed"/></epos-print></s:Body></s:Envelope>`;
+
+        if (Capacitor.isNativePlatform()) {
+          await CapacitorHttp.post({
+            url: endpoint,
+            headers: { 'Content-Type': 'text/xml; charset=utf-8', SOAPAction: '""' },
+            data: xml,
+            connectTimeout: 5000,
+          });
+        } else {
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/xml; charset=utf-8', SOAPAction: '""' },
+            body: xml,
+            signal: controller.signal,
+          });
+          if (!res.ok) throw new Error(`Epson ePOS returned HTTP ${res.status}`);
+        }
+      }
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 

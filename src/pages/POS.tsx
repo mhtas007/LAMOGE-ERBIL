@@ -16,6 +16,7 @@ import {
   AlertCircle,
   Loader2,
   RotateCcw,
+  UtensilsCrossed,
 } from "lucide-react";
 import { Receipt } from "../components/Receipt";
 import { PrinterService } from "../services/printerService";
@@ -72,6 +73,7 @@ export const POS: React.FC = () => {
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [isSilentPrinting, setIsSilentPrinting] = useState(false);
   const [isProcessingCheckout, setIsProcessingCheckout] = useState(false);
+  const [isPrintingKitchen, setIsPrintingKitchen] = useState(false);
   const [printError, setPrintError] = useState<string | null>(null);
 
   const showToast = (text: string, type: 'success' | 'error' = 'success') => {
@@ -244,6 +246,26 @@ export const POS: React.FC = () => {
     paymentMethod: paymentMethod,
     notes: orderNotes,
   }), [cartItems, orderType, subtotal, discountValue, serviceChargeValue, total, liveInvoiceCode, paymentMethod, orderNotes]);
+
+  const handlePrintKitchenTicket = async () => {
+    if (cartItems.length === 0 || isPrintingKitchen) return;
+    setIsPrintingKitchen(true);
+    try {
+      const tableObj = tables.find((t) => t.id === selectedTableId);
+      const tableName = tableObj ? `${isRtl ? 'مێزی' : 'Table'} ${tableObj.number}` : undefined;
+      await PrinterService.printKitchenTicket({
+        order: liveOrderForReceipt,
+        tableName,
+        menuItems,
+        receiptLanguage: (receiptSettings.receiptLanguage || language || 'en') as 'en' | 'ku' | 'ar',
+      });
+      showToast(isRtl ? 'داواکاری بۆ چێشتخانە و بار (KOT) بە سەرکەوتوویی چاپکرا!' : 'Kitchen order ticket printed successfully!', 'success');
+    } catch (err: any) {
+      showToast((isRtl ? 'هەڵە لە چاپی چێشتخانە: ' : 'Kitchen print error: ') + err.message, 'error');
+    } finally {
+      setIsPrintingKitchen(false);
+    }
+  };
 
   const performSilentPrint = async (orderToPrint: Order, isReprint = false) => {
     setIsSilentPrinting(true);
@@ -777,7 +799,19 @@ export const POS: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-2.5">
+            {cartItems.length > 0 && (
+              <button
+                type="button"
+                onClick={handlePrintKitchenTicket}
+                disabled={isPrintingKitchen}
+                className="px-3 sm:px-4 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl font-bold text-xs sm:text-sm transition-all shadow-sm active:scale-[0.98] flex items-center justify-center gap-1.5 disabled:opacity-50"
+                title="چاپکردنی داواکاری بۆ چێشتخانە و بار (KOT)"
+              >
+                <UtensilsCrossed size={16} className="text-amber-700" />
+                <span className="hidden sm:inline">{isPrintingKitchen ? (isRtl ? "چاپ دەکرێت..." : "Printing...") : (isRtl ? "چێشتخانە (KOT)" : "Kitchen (KOT)")}</span>
+              </button>
+            )}
             {selectedTable && (
               <button
                 onClick={handleSendToTable}

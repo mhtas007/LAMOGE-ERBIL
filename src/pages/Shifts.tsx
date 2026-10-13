@@ -23,13 +23,16 @@ import {
   Briefcase,
   Layers,
   ArrowUpRight,
-  Fingerprint
+  Fingerprint,
+  Printer
 } from 'lucide-react';
 import { Shift } from '../types';
+import { PrinterService } from '../services/printerService';
 import { motion, AnimatePresence } from 'motion/react';
 
 export const Shifts: React.FC = () => {
-  const { t, isRtl, shifts, language, users } = useAppContext();
+  const { t, isRtl, shifts, language, users, receiptSettings } = useAppContext();
+  const [printingShiftId, setPrintingShiftId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDate, setFilterDate] = useState<string>('');
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
@@ -124,6 +127,34 @@ export const Shifts: React.FC = () => {
     if (role === 'admin') return isRtl ? 'بەڕێوبەر' : 'Admin';
     if (role === 'cashier') return isRtl ? 'کاشێر' : 'Cashier';
     return isRtl ? 'گارسۆن' : 'Waiter';
+  };
+
+  const handlePrintZReport = async (shift: Shift) => {
+    setPrintingShiftId(shift.id);
+    try {
+      await PrinterService.printZReport({
+        shiftId: shift.id,
+        userName: shift.userName,
+        userRole: getRoleLabel(shift.userRole),
+        clockInTime: shift.clockInTime,
+        clockOutTime: shift.clockOutTime || new Date().toISOString(),
+        totalHours: shift.totalHours || 0,
+        totalSales: shift.totalSales || 0,
+        totalOrders: shift.totalOrders || 0,
+        startingCash: shift.startingCash || 0,
+        declaredCash: shift.declaredCash ?? shift.totalSales ?? 0,
+        expectedCash: shift.expectedCash ?? shift.totalSales ?? 0,
+        discrepancy: shift.discrepancy || 0,
+        cafeName: receiptSettings.cafeName || 'LAMOGE CAFE',
+        currencySymbol: receiptSettings.currency || 'IQD',
+        receiptLanguage: (receiptSettings.receiptLanguage || language || 'en') as 'en' | 'ku' | 'ar',
+      });
+      alert(isRtl ? 'ڕاپۆرتی شیفت (Z-Report) بە سەرکەوتوویی چاپکرا لەسەر پرینتەر!' : 'Z-Report printed successfully on thermal printer!');
+    } catch (err: any) {
+      alert((isRtl ? 'هەڵە لە چاپی ڕاپۆرتی شیفت: ' : 'Failed to print Z-Report: ') + (err.message || ''));
+    } finally {
+      setPrintingShiftId(null);
+    }
   };
 
   return (
@@ -608,6 +639,15 @@ export const Shifts: React.FC = () => {
                                 }
                               </span>
                             </div>
+                            <button
+                              onClick={() => handlePrintZReport(shift)}
+                              disabled={printingShiftId === shift.id}
+                              className="mt-3.5 w-full py-2 px-3 rounded-xl bg-natural-surface hover:bg-natural-dark hover:text-white border border-natural-border text-natural-text text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-50"
+                              title="Print Shift Closing Z-Report on thermal printer"
+                            >
+                              <Printer size={13} />
+                              <span>{printingShiftId === shift.id ? (isRtl ? 'چاپ دەکرێت...' : 'Printing...') : (isRtl ? 'چاپکردنی ڕاپۆرت (Z-Report)' : 'Print Z-Report')}</span>
+                            </button>
                           </div>
                         </div>
                       ) : isCompleted && isWaiterShift ? (

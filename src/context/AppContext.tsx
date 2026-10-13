@@ -46,6 +46,7 @@ interface AppContextType {
   
   // App Actions
   addOrder: (order: Order) => void;
+  cancelOrder: (orderId: string, reason: string) => Promise<void>;
   addMenuItem: (item: MenuItem) => void;
   updateMenuItem: (id: string, item: Partial<MenuItem>) => void;
   deleteMenuItem: (id: string) => void;
@@ -426,6 +427,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await setDoc(doc(db, 'orders', order.id), cleaned);
     } catch (e) {
       console.error('Error adding order:', e);
+    }
+  };
+
+  const cancelOrder = async (orderId: string, reason: string) => {
+    try {
+      await setDoc(doc(db, 'orders', orderId), {
+        status: 'cancelled',
+        cancelReason: reason,
+        cancelledAt: new Date().toISOString(),
+        cancelledBy: user?.name || user?.username || 'Staff',
+      }, { merge: true });
+    } catch (e) {
+      console.error('Error cancelling order:', e);
+      throw e;
     }
   };
 
@@ -864,7 +879,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     <AppContext.Provider value={{ 
       language, setLanguage, theme, toggleTheme, t, isRtl, user, login, logout, loadingAuth, 
       currentPath, navigate,
-      recentOrders, addOrder,
+      recentOrders, addOrder, cancelOrder,
       menuItems, categories, tables,
       users, expenses, inventory, addInventoryItem, updateInventoryItem, deleteInventoryItem, inventoryLogs, adjustInventoryStock, shifts, currentShift, clockIn, clockOut, incrementShiftOrdersSent, expenseCategories, addExpenseCategory, deleteExpenseCategory,
       addMenuItem, updateMenuItem, deleteMenuItem,

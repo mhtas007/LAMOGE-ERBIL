@@ -23,6 +23,36 @@ export interface FormattedReceiptData {
   isReprint?: boolean;
 }
 
+export interface ZReportData {
+  shiftId: string;
+  userName: string;
+  userRole: string;
+  clockInTime: string;
+  clockOutTime: string;
+  totalHours: number;
+  totalSales: number;
+  totalOrders: number;
+  startingCash?: number;
+  declaredCash: number;
+  expectedCash: number;
+  discrepancy: number;
+  cafeName: string;
+  currencySymbol?: string;
+  cashSales?: number;
+  cardSales?: number;
+  digitalSales?: number;
+  receiptLanguage?: 'en' | 'ku' | 'ar';
+  logo?: string;
+}
+
+export interface KitchenTicketData {
+  order: Order;
+  tableName?: string;
+  serverName?: string;
+  menuItems: MenuItem[];
+  receiptLanguage?: 'en' | 'ku' | 'ar';
+}
+
 export class ReceiptFormatter {
   private static getLabels(lang: 'en' | 'ku' | 'ar' = 'en') {
     const dict = {
